@@ -46,7 +46,7 @@
 # COMMAND ----------
 
 # DBTITLE 1,Correos por rol (varios separados por coma; vacío si el rol no tiene cuenta)
-dbutils.widgets.text("email_custodian", "ecodata.utec@gmail.com, fvcastillon@gmail.com", "Data Custodian — Fiorela")
+dbutils.widgets.text("email_custodian", "ecodata.utec@gmail.com, fvcastillon@gmail.com, dfvaler@gmail.com", "Data Custodian — David, Fiorela")
 dbutils.widgets.text("email_owner", "leilacordova6@gmail.com", "Data Owner — Leila")
 dbutils.widgets.text("email_steward", "ecodata.utec@gmail.com, dfvaler@gmail.com", "Data Steward — David")
 dbutils.widgets.text("email_consumidores", "jcrevolledo@gmail.com,esuarezq@gmail.com", "Consumidores — Juan Carlos, Edgar")
