@@ -154,9 +154,9 @@ print(f"✔ Golden Record válido: {n_origen:,} registros de origen → {g.count
 
 # MAGIC %md
 # MAGIC ### Resultado y criterio
-# MAGIC ### Resultado y criterio
+# MAGIC
 # MAGIC Registros de origen: **14.577** · Golden records: **14.559** · Grupos consolidados: **18** (36 registros; 18 duplicados lógicos, 0,12 % del catálogo).
-# MAGIC # MAGIC
+# MAGIC
 # MAGIC **Revisión del steward (Rafael Nakamura) · aprobada por el Data Owner (Andrew Collins) · Acta 08**
 # MAGIC | Tipo | Grupos | Decisión |
 # MAGIC |---|---|---|
@@ -165,7 +165,7 @@ print(f"✔ Golden Record válido: {n_origen:,} registros de origen → {g.count
 # MAGIC | Duplicado vigente | Philadelphia Film Center, Yellow Cab, Nail Polish Bar & Spa, Twenty Manning, Frontier (5) | Aprobado. Frontier: una sola operación de la aerolínea en el aeropuerto, no sucursales distintas |
 # MAGIC | Dirección compartida (8000 Essington Ave) | Starbucks, XpresSpa (2) | Excluidos por M5: sucursales distintas en terminales distintas |
 # MAGIC
-# MAGIC En 5 de los 9 grupos que reabrieron, el superviviente (S1, más reseñas) es la ficha antigua y cerrada: el `golden_id` es solo una clave de agrupación y el estado lo da S5.
+# MAGIC En 4 de los 9 grupos que reabrieron, el superviviente (S1, más reseñas) es la ficha antigua y cerrada: el `golden_id` es solo una clave de agrupación y el estado lo da S5.
 # MAGIC **Limitación:** el matching es exacto tras normalizar; los errores de tipeo no se detectan. **Pendiente:** usar el `golden_id` en `gld_dim_negocio` (aprobado para la siguiente versión).
 # MAGIC
 # MAGIC ### Definition of Done (E4.3)
