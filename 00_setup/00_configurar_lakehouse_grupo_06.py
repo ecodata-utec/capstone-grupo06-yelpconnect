@@ -12,7 +12,8 @@
 # MAGIC - Volume `raw` para aterrizar los archivos crudos del Yelp Open Dataset.
 # MAGIC - Tablas de control que usarán los entregables E4, E5 y E6.
 # MAGIC
-# MAGIC > ✏️ **TODO (grupo):** completar el widget con el número de grupo antes de ejecutar.
+# MAGIC > **Trazabilidad —** implementa la restricción de la sección 2.6 (un solo catálogo, capas separadas por schema) y el
+# MAGIC > bloque *Almacenamiento analítico versionado* de la sección 3.2 del Documento Formal.
 
 # COMMAND ----------
 
@@ -41,6 +42,12 @@ CREATE VOLUME IF NOT EXISTS {CATALOGO}.yelp_bronze.raw
 COMMENT 'Zona de aterrizaje de archivos crudos (business, review, user, tip, checkin)'
 """)
 print("Volume listo → /Volumes/workspace/yelp_bronze/raw/")
+
+spark.sql(f"""
+CREATE VOLUME IF NOT EXISTS {CATALOGO}.yelp_gov.artefactos
+COMMENT 'Artefactos de gobierno: Excel del glosario y del diccionario (mismo archivo que se anexa al Documento Formal)'
+""")
+print("Volume listo → /Volumes/workspace/yelp_gov/artefactos/")
 
 # COMMAND ----------
 
@@ -125,10 +132,13 @@ CREATE TABLE IF NOT EXISTS {CATALOGO}.yelp_gov.matriz_raci (
   data_steward     STRING,
   data_custodian   STRING,
   consumidores     STRING  COMMENT 'Áreas que consumen la entidad',
-  clasificacion    STRING  COMMENT 'publica|interna|confidencial|pii'
+  clasificacion    STRING  COMMENT 'publico|interno|confidencial|restringido (sección 5.3, mismos valores que el tag clasificacion)'
 ) COMMENT 'E6 · Asignación de roles y responsabilidades sobre entidades'
 """)
 print("Tablas de control creadas ✔")
+
+spark.sql(f"""ALTER TABLE {CATALOGO}.yelp_gov.matriz_raci ALTER COLUMN clasificacion
+              COMMENT 'Clasificación más alta de las columnas de la entidad: publico|interno|confidencial|restringido (sección 5.3)'""")
 
 # COMMAND ----------
 

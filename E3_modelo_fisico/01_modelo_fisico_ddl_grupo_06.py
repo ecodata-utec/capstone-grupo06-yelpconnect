@@ -1,4 +1,8 @@
 # Databricks notebook source
+# /// script
+# [tool.databricks.environment]
+# environment_version = "6"
+# ///
 # MAGIC %md
 # MAGIC # E3 · Modelo Físico — DDL sobre Delta Lake / Unity Catalog
 # MAGIC **Cierra con:** M4 Modelado Avanzado · Se implementa en `yelp_silver` (conformado) y `yelp_gold` (dimensional).
@@ -9,10 +13,7 @@
 # MAGIC    enforcan, pero documentan el modelo y habilitan optimizaciones y lineage).
 # MAGIC 3. Constraints sí enforzadas donde aplique: `NOT NULL` y `CHECK`.
 # MAGIC
-# MAGIC Abajo va UNA tabla completa de ejemplo; el grupo completa el resto según su modelo lógico.
-# MAGIC
-# MAGIC > **Trazabilidad —** este entregable **implementa** la sección «Modelos conceptual y lógico» del
-# MAGIC > **Documento Formal de Arquitectura de Datos**. Este notebook es la materialización física de ese modelo: cada entidad y atributo del modelo lógico debe existir aquí como tabla y columna con su COMMENT.
+# MAGIC > **Trazabilidad —** implementa las secciones 4.2 (modelo lógico), 4.3 (estrategia dimensional de gold) y 4.4 (trazabilidad conceptual → lógico → físico), y las decisiones ADR-04 (retención de 30 días), ADR-05 (fechas DATE) y ADR-06 (check-in a grano evento) del Documento Formal.
 
 # COMMAND ----------
 
@@ -26,7 +27,7 @@
 # MAGIC --   * PRIMARY KEY / FOREIGN KEY son informativas en Unity Catalog (no se enforzan).
 # MAGIC --   * NOT NULL sí se enforza.
 # MAGIC --   * CHECK sí existe en Delta y se agrega sobre la tabla ya creada con ALTER TABLE ... ADD CONSTRAINT.
-# MAGIC --     Decisión vigente (Anexo C del Documento Formal): NO se declara CHECK sobre stars; el rango 1-5 lo garantiza
+# MAGIC --     Decisión vigente (sección 9 del Documento Formal, fila del modelo): NO se declara CHECK sobre stars; el rango 1-5 lo garantiza
 # MAGIC --     DQ-001 enviando a cuarentena. Ver la celda opcional al final del DDL.
 # MAGIC --     La validación de rango (p.ej. stars 1-5) se garantiza en el pipeline silver antes de llegar aquí.
 # MAGIC --   * Los COMMENT son los que el notebook E4 toma como "Descripción de Negocio".
@@ -45,7 +46,7 @@
 # MAGIC   CONSTRAINT pk_slv_business PRIMARY KEY (business_id)
 # MAGIC )
 # MAGIC COMMENT 'Negocios de la muestra de Philadelphia — capa conformada. Data Owner: Producto (Andrew Collins). Steward: Rafael Nakamura (Trust & Safety).'
-# MAGIC TBLPROPERTIES (delta.enableChangeDataFeed = true);
+# MAGIC TBLPROPERTIES ('delta.logRetentionDuration' = 'interval 30 days','delta.deletedFileRetentionDuration' = 'interval 30 days');   -- ADR-04
 # MAGIC
 # MAGIC -- --------------------------------- slv_user ---------------------------------------
 # MAGIC CREATE TABLE IF NOT EXISTS workspace.yelp_silver.slv_user (
@@ -59,7 +60,7 @@
 # MAGIC   CONSTRAINT pk_slv_user PRIMARY KEY (user_id)
 # MAGIC )
 # MAGIC COMMENT 'Usuarios que publicaron reseñas o tips en la muestra — capa conformada. Contiene datos personales. Data Owner: Producto (Andrew Collins); accesos aprobados por Trust & Safety (Rafael Nakamura).'
-# MAGIC TBLPROPERTIES (delta.enableChangeDataFeed = true);
+# MAGIC TBLPROPERTIES ('delta.logRetentionDuration' = 'interval 30 days','delta.deletedFileRetentionDuration' = 'interval 30 days');   -- ADR-04
 # MAGIC
 # MAGIC -- -------------------------------- slv_review --------------------------------------
 # MAGIC CREATE TABLE IF NOT EXISTS workspace.yelp_silver.slv_review (
@@ -75,7 +76,8 @@
 # MAGIC   CONSTRAINT fk_review_business FOREIGN KEY (business_id) REFERENCES workspace.yelp_silver.slv_business (business_id)
 # MAGIC )
 # MAGIC COMMENT 'Reseñas de la muestra — capa conformada, sin duplicados de review_id. Data Owner: Producto (Andrew Collins); accesos aprobados por Trust & Safety (Rafael Nakamura).'
-# MAGIC TBLPROPERTIES (delta.enableChangeDataFeed = true);
+# MAGIC TBLPROPERTIES ('delta.logRetentionDuration' = 'interval 30 days','delta.deletedFileRetentionDuration' = 'interval 30 days');   -- ADR-04
+# MAGIC
 # MAGIC
 # MAGIC -- --------------------------------- slv_tip ----------------------------------------
 # MAGIC -- Sin clave primaria: el origen no entrega identificador de tip. Se documenta como decisión en 4.2.
@@ -89,7 +91,8 @@
 # MAGIC   CONSTRAINT fk_tip_business FOREIGN KEY (business_id) REFERENCES workspace.yelp_silver.slv_business (business_id)
 # MAGIC )
 # MAGIC COMMENT 'Tips de la muestra — capa conformada. Data Owner: Producto (Andrew Collins); accesos aprobados por Trust & Safety (Rafael Nakamura).'
-# MAGIC TBLPROPERTIES (delta.enableChangeDataFeed = true);
+# MAGIC TBLPROPERTIES ('delta.logRetentionDuration' = 'interval 30 days','delta.deletedFileRetentionDuration' = 'interval 30 days');   -- ADR-04
+# MAGIC
 # MAGIC
 # MAGIC -- ------------------------------- slv_check_in -------------------------------------
 # MAGIC -- Grano evento: 1 fila = 1 check-in. El origen trae todas las marcas en un solo texto separado por comas;
@@ -101,18 +104,30 @@
 # MAGIC   CONSTRAINT fk_check_in_business FOREIGN KEY (business_id) REFERENCES workspace.yelp_silver.slv_business (business_id)
 # MAGIC )
 # MAGIC COMMENT 'Check-ins de la muestra a grano evento — capa conformada. Fuente del volumen diario oficial de check-ins. Data Owner: Producto (Andrew Collins).'
-# MAGIC TBLPROPERTIES (delta.enableChangeDataFeed = true);
+# MAGIC TBLPROPERTIES ('delta.logRetentionDuration' = 'interval 30 days','delta.deletedFileRetentionDuration' = 'interval 30 days');   -- ADR-04
+
+# COMMAND ----------
+
+# DBTITLE 1,ADR-04 en silver: retención de 30 días y sin Change Data Feed (tablas ya existentes)
+# Silver guarda datos personales (nombre y textos): la supresión (5.4) debe alcanzar sus versiones anteriores en 30 días.
+# Change Data Feed se desactiva porque ningún proceso lo consume y conservaría copias de las filas borradas.
+for t in ["slv_business", "slv_user", "slv_review", "slv_tip", "slv_check_in"]:
+    spark.sql(f"""ALTER TABLE workspace.yelp_silver.{t} SET TBLPROPERTIES (
+      'delta.enableChangeDataFeed' = 'false',
+      'delta.logRetentionDuration' = 'interval 30 days',
+      'delta.deletedFileRetentionDuration' = 'interval 30 days')""")
+    print(f"✔ {t}: retención de 30 días, sin CDF")
 
 # COMMAND ----------
 
 # DBTITLE 1,(Opcional, no adoptado) CHECK preventivo sobre slv_review.stars
 # MAGIC %sql
-# MAGIC -- Hoy el documento dice que el DDL NO declara CHECK (Anexo C). Si el grupo decide agregarlo como
-# MAGIC -- calidad preventiva además de DQ-001 (detectiva), quitar los comentarios y actualizar el Anexo C.
+# MAGIC -- Hoy el documento dice que el DDL NO declara CHECK (Seccion 9). Si el grupo decide agregarlo como
+# MAGIC -- calidad preventiva además de DQ-001 (detectiva), quitar los comentarios y actualizar la sección 9.
 # MAGIC -- Va con ALTER TABLE: en Delta el CHECK se agrega sobre la tabla ya creada (y valida las filas que ya tiene).
 # MAGIC -- ALTER TABLE workspace.yelp_silver.slv_review DROP CONSTRAINT IF EXISTS chk_review_stars;
 # MAGIC -- ALTER TABLE workspace.yelp_silver.slv_review ADD CONSTRAINT chk_review_stars CHECK (stars BETWEEN 1 AND 5);
-# MAGIC SELECT 'CHECK no adoptado: el rango de stars se controla con DQ-001 + cuarentena (Anexo C)' AS decision;
+# MAGIC SELECT 'CHECK no adoptado: el rango de stars se controla con DQ-001 + cuarentena (seccion 9)' AS decision;
 
 # COMMAND ----------
 
@@ -293,6 +308,27 @@
 
 # COMMAND ----------
 
+# DBTITLE 1,DBTITLE 1,CHECK constraints en gold (calidad preventiva, además de las reglas detectivas de E5)
+# MAGIC %sql
+# MAGIC -- Se agregan con ALTER: en Delta el CHECK valida las filas existentes y luego toda escritura de E7/03.
+# MAGIC ALTER TABLE workspace.yelp_gold.gld_kpi_resenas_sospechosas_negocio DROP CONSTRAINT IF EXISTS chk_kpi_sospechosas;
+# MAGIC ALTER TABLE workspace.yelp_gold.gld_kpi_resenas_sospechosas_negocio
+# MAGIC   ADD CONSTRAINT chk_kpi_sospechosas CHECK (pct_sospechosas BETWEEN 0 AND 100 AND n_sospechosas <= n_resenas);
+# MAGIC
+# MAGIC ALTER TABLE workspace.yelp_gold.gld_dim_usuario_riesgo DROP CONSTRAINT IF EXISTS chk_nivel_riesgo;
+# MAGIC ALTER TABLE workspace.yelp_gold.gld_dim_usuario_riesgo
+# MAGIC   ADD CONSTRAINT chk_nivel_riesgo CHECK (nivel_riesgo IN ('Alto', 'Medio', 'Bajo', 'Sin señales'));
+# MAGIC
+# MAGIC ALTER TABLE workspace.yelp_gold.gld_kpi_calidad_datos DROP CONSTRAINT IF EXISTS chk_pct_calidad;
+# MAGIC ALTER TABLE workspace.yelp_gold.gld_kpi_calidad_datos
+# MAGIC   ADD CONSTRAINT chk_pct_calidad CHECK (pct_cumplimiento BETWEEN 0 AND 100 AND umbral_pct BETWEEN 0 AND 100);
+# MAGIC
+# MAGIC ALTER TABLE workspace.yelp_gold.gld_dim_tiempo DROP CONSTRAINT IF EXISTS chk_calendario;
+# MAGIC ALTER TABLE workspace.yelp_gold.gld_dim_tiempo
+# MAGIC   ADD CONSTRAINT chk_calendario CHECK (mes BETWEEN 1 AND 12 AND dia_semana BETWEEN 1 AND 7);
+
+# COMMAND ----------
+
 # DBTITLE 1: Validación automática del entregable (correr antes del PR)
 tablas = spark.sql("SHOW TABLES IN workspace.yelp_silver").collect()
 assert len(tablas) >= 5, "Deben existir al menos las 5 entidades en silver"
@@ -306,13 +342,25 @@ sin_comment = spark.sql("""
     AND (comment IS NULL OR comment = '')
 """).collect()
 assert not sin_comment, f"❌ Columnas sin COMMENT (rompe E4): {[(r.table_name, r.column_name) for r in sin_comment]}"
+
+GOLD_CON_CHECK = ["gld_kpi_resenas_sospechosas_negocio", "gld_dim_usuario_riesgo", "gld_kpi_calidad_datos", "gld_dim_tiempo"]
+n_check = sum(spark.sql(f"SHOW TBLPROPERTIES workspace.yelp_gold.{t}")
+                   .filter("key LIKE 'delta.constraints.%'").count() for t in GOLD_CON_CHECK)
+assert n_check >= 4, f"❌ Faltan CHECK constraints en gold (hay {n_check})"
+sin_retencion = [t.tableName for t in tablas
+                 if not spark.sql(f"SHOW TBLPROPERTIES workspace.yelp_silver.{t.tableName}")
+                             .filter("key = 'delta.deletedFileRetentionDuration'").count()]
+assert not sin_retencion, f"❌ Silver sin la retención de ADR-04: {sin_retencion}"
+
 print(f"✔ Modelo físico validado: {len(tablas)} tablas silver y {len(gold)} objetos gold, todas las columnas con COMMENT")
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC ### Definition of Done (E3)
-# MAGIC - [x] DDL completo de silver (5 entidades) y gold (esquema estrella: 3 dimensiones, 1 hecho, 3 hechos agregados y 1 vista).
-# MAGIC - [x] 100% de columnas con COMMENT (la celda de validación pasa).
-# MAGIC - [x] PK/FK declaradas en silver y gold. CHECK sobre `stars` no adoptado: el rango lo garantiza DQ-001 con cuarentena (Anexo C); la celda opcional lo deja listo si el grupo lo decide.
-# MAGIC - [ ] Captura del diagrama de lineage/ER de Catalog Explorer en `img/`.
+# MAGIC [x] DDL completo de silver (5 entidades) y gold (esquema estrella: 3 dimensiones, 1 hecho, 3 hechos agregados y 1 vista).   
+# MAGIC [x] 100 % de columnas con COMMENT (la celda de validación pasa).   
+# MAGIC [x] PK/FK informativas en silver y gold; NOT NULL en claves y columnas obligatorias de gold.   
+# MAGIC [x] CHECK constraints en 4 tablas gold (calidad preventiva). Sobre `slv_review.stars` se mantiene DQ-001 + cuarentena (sección 9).   
+# MAGIC [x] Retención de 30 días (ADR-04) en silver y gold; silver sin Change Data Feed.   
+# MAGIC [x] Capturas del lineage de las 5 tablas silver en `img/` (E3-Lineage…).   

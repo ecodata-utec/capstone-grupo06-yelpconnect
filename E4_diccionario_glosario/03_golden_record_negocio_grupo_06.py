@@ -23,8 +23,7 @@
 # MAGIC **Dónde vive:** en `yelp_gov`, igual que la cuarentena. Es un artefacto de gobierno, no un producto de consumo, así que no
 # MAGIC entra en el Diccionario ni en los permisos de gold. Lee `brz_business` porque silver no conserva el código postal.
 # MAGIC
-# MAGIC > **Trazabilidad —** implementa la gestión de datos maestros de Negocio descrita en el Documento Formal (dominio Negocio,
-# MAGIC > Data Owner Andrew Collins, steward Rafael Nakamura). Ejecutar después de E7/01 (bronze).
+# MAGIC > **Trazabilidad —** implementa la sección 4.5 del Documento Formal (Golden Record de Negocio). Lee bronze porque silver no conserva el código postal (minimización, 4.2)
 
 # COMMAND ----------
 
@@ -34,7 +33,13 @@
 #   M2. Abreviaturas de dirección unificadas: street → st, avenue → ave, road → rd, boulevard → blvd.
 #   M3. Mismo nombre normalizado + misma dirección normalizada + mismo código postal = mismo negocio.
 #   M4. Sin dirección no hay match (food trucks, negocios a domicilio): el registro es su propio golden record.
-spark.sql("""
+#   M5. Direcciones compartidas por sucursales distintas (aeropuerto PHL, revisión del steward): no se fusionan.
+
+# M5 · Decisión del steward (sección 4.5): direcciones normalizadas compartidas por locales distintos
+DIRECCIONES_COMPARTIDAS = ["8000essingtonave"]   # Aeropuerto Internacional de Filadelfia
+lista_m5 = ", ".join(f"'{d}'" for d in DIRECCIONES_COMPARTIDAS)
+
+spark.sql(f"""
 CREATE OR REPLACE TEMP VIEW mdm_candidatos AS
 WITH base AS (
   SELECT business_id, name, address, CAST(postal_code AS STRING) AS postal_code,
@@ -49,7 +54,7 @@ WITH base AS (
   WHERE business_id IS NOT NULL
 )
 SELECT *,
-       CASE WHEN direccion_norm <> '' AND nombre_norm <> ''
+       CASE WHEN direccion_norm <> '' AND nombre_norm <> '' AND direccion_norm NOT IN ({lista_m5})
             THEN concat_ws('|', nombre_norm, direccion_norm, coalesce(trim(postal_code), ''))
        END AS clave_match
 FROM base
@@ -93,22 +98,24 @@ print(f"Negocios en bronze: {spark.table('mdm_grupos').count():,} · "
 #   S3. categories → unión sin repetidos de las categorías de todos los registros del grupo.
 #   S4. review_count_total → suma de las reseñas de todos los registros (la actividad no se pierde al fusionar).
 #   S5. is_open → 1 si alguna ficha del grupo figura abierta (la ficha nueva refleja el estado actual).
-spark.sql("""
+spark.sql(f"""
 CREATE OR REPLACE TABLE workspace.yelp_gov.mdm_negocio_correspondencia
 COMMENT 'E4.3 · MDM: correspondencia business_id → golden_id del Golden Record de Negocio (arquitectura Registry)'
 AS SELECT business_id, golden_id, rn = 1 AS es_superviviente, n_registros,
-          CASE WHEN clave_match IS NULL THEN 'Sin dirección: es su propio golden record (M4)'
+          CASE WHEN clave_match IS NULL AND direccion_norm IN ({lista_m5})
+                    THEN 'Dirección compartida (aeropuerto): no se fusiona (M5, revisión del steward)'
+               WHEN clave_match IS NULL THEN 'Sin dirección: es su propio golden record (M4)'
                WHEN n_registros = 1     THEN 'Sin coincidencias'
-               ELSE 'Mismo nombre, dirección y código postal normalizados (M1-M3)' END AS regla_match,
-          current_timestamp() AS ejecucion_ts
+               ELSE 'Mismo nombre, dirección y código postal normalizados (M1-M3); grupo revisado por el steward' END AS regla_match,
+          current_timestamp()                                   AS ejecucion_ts
    FROM mdm_grupos
 """)
 
 spark.sql("""
 CREATE OR REPLACE TABLE workspace.yelp_gov.mdm_negocio_golden
-COMMENT 'E4.3 · MDM: Golden Record de Negocio, una fila por negocio real, con reglas de supervivencia S1-S4'
+COMMENT 'E4.3 · MDM: Golden Record de Negocio, una fila por negocio real, con reglas de supervivencia S1-S5'
 AS SELECT golden_id,
-          max(CASE WHEN rn = 1 THEN name END)                   AS name,
+          max(CASE WHEN rn = 1 THEN regexp_replace(trim(name), ' +', ' ') END) AS name,   -- S1: nombre del superviviente, sin espacios dobles
           max_by(address, length(address))                      AS address,
           max(CASE WHEN rn = 1 THEN postal_code END)            AS postal_code,
           max(is_open)                AS is_open,
@@ -138,22 +145,30 @@ assert g.filter("name IS NULL").count() == 0, "❌ Hay golden records sin nombre
 assert g.agg({"n_registros_origen": "sum"}).first()[0] == n_origen, "❌ Se perdieron o duplicaron registros al fusionar"
 
 fusionados = g.filter("n_registros_origen > 1").count()
+assert x.filter("regla_match LIKE 'Dirección compartida%' AND golden_id <> business_id").count() == 0, \
+    "❌ Un negocio con dirección compartida quedó fusionado"
 print(f"✔ Golden Record válido: {n_origen:,} registros de origen → {g.count():,} negocios únicos "
       f"({fusionados:,} golden records consolidan más de un registro)")
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC Resultado y criterio
-# MAGIC Registros de origen: 14.577 · Golden records: 14.556 · Grupos consolidados: 20 (41 registros; 21 duplicados lógicos, 0,14 % del catálogo).
-# MAGIC Revisión del steward de los 20 grupos:
-# MAGIC 9 son negocios que reabrieron o se volvieron a registrar: una ficha cerrada y otra abierta (por ejemplo, Lolita, con 668 y 423 reseñas repartidas en dos fichas).
-# MAGIC 4 son fichas duplicadas de negocios ya cerrados, y 5 son fichas duplicadas vigentes. En “Nail Polish Bar & Spa” y “HubBub Coffee”, la normalización unió variantes del nombre y de la dirección.
-# MAGIC 2 son probables falsos positivos: Starbucks y XpresSpa en 8000 Essington Ave, el aeropuerto de Filadelfia, donde sucursales de distintas terminales comparten la dirección postal.
-# MAGIC Ajuste de supervivencia tras la revisión: en 4 grupos la ficha con más reseñas era la antigua y cerrada. Se agregó la regla S5: el negocio figura abierto si alguna de sus fichas lo está. Cada atributo tiene su propia regla de supervivencia.
-# MAGIC Limitación: el matching es exacto tras normalizar. Errores de tipeo no se detectan, y direcciones compartidas (aeropuertos, centros comerciales) generan falsos positivos. Antes de usar el golden_id en gold, el steward debe aprobar cada grupo; los dos del aeropuerto quedan excluidos.
+# MAGIC ### Resultado y criterio
+# MAGIC
+# MAGIC Registros de origen: **14.577** · Golden records: **14.559** · Grupos consolidados: **18** (36 registros; 18 duplicados lógicos, 0,12 % del catálogo).
+# MAGIC
+# MAGIC **Revisión del steward (Rafael Nakamura) · aprobada por el Data Owner (Andrew Collins) · Acta 08**
+# MAGIC | Tipo | Grupos | Decisión |
+# MAGIC |---|---|---|
+# MAGIC | Reabrió o se volvió a registrar | Dentistry For Life, Union Trust, Lolita (668 + 423 reseñas), Friday Saturday Sunday, Bridget Foy's, Tap Room On 19th, Park Towne Place, Dunphy Motors, The Station at Manayunk (9) | Aprobado; S5 lo deja abierto |
+# MAGIC | Duplicado de negocio cerrado | Red Sky, IHOP, HubBub Coffee, Swiss Haus (4) | Aprobado |
+# MAGIC | Duplicado vigente | Philadelphia Film Center, Yellow Cab, Nail Polish Bar & Spa, Twenty Manning, Frontier (5) | Aprobado. Frontier: una sola operación de la aerolínea en el aeropuerto, no sucursales distintas |
+# MAGIC | Dirección compartida (8000 Essington Ave) | Starbucks, XpresSpa (2) | Excluidos por M5: sucursales distintas en terminales distintas |
+# MAGIC
+# MAGIC En 4 de los 9 grupos que reabrieron, el superviviente (S1, más reseñas) es la ficha antigua y cerrada: el `golden_id` es solo una clave de agrupación y el estado lo da S5.
+# MAGIC **Limitación:** el matching es exacto tras normalizar; los errores de tipeo no se detectan. **Pendiente:** usar el `golden_id` en `gld_dim_negocio` (aprobado para la siguiente versión).
 # MAGIC
 # MAGIC ### Definition of Done (E4.3)
-# MAGIC - [ ] Reglas de matching (M1-M4) y de supervivencia (S1-S4) documentadas.
-# MAGIC - [ ] Tabla de correspondencia y golden record creados en `yelp_gov`.
-# MAGIC - [ ] Validadores en verde y captura de la celda de evidencia.
+# MAGIC - [x] Reglas de matching (M1–M5) y de supervivencia (S1–S5) documentadas.
+# MAGIC - [x] Tabla de correspondencia y golden record creados en `yelp_gov`.
+# MAGIC - [x] Validadores en verde y revisión del steward registrada (Acta 08).

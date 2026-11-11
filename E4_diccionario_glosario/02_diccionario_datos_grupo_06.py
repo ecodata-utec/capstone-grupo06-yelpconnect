@@ -20,7 +20,7 @@
 # MAGIC
 # MAGIC Si el borrador autogenerado sale con huecos, la deuda está en el DDL de E3, no aquí.
 # MAGIC
-# MAGIC > **Trazabilidad —** este entregable **implementa** la sección «Anexo · Diccionario de datos» del
+# MAGIC > **Trazabilidad —** este entregable **implementa** la sección «Anexo B · Diccionario de datos» del
 # MAGIC > **Documento Formal de Arquitectura de Datos**. El Excel institucional se anexa al documento; esta tabla Delta permite auditar automáticamente la cobertura de documentación contra el catálogo.
 
 # COMMAND ----------
@@ -112,6 +112,19 @@ faltantes = spark.sql("""
 print(f"Columnas físicas sin entrada en el diccionario: {faltantes.count()}")
 display(faltantes)
 
+sobrantes = spark.sql("""
+  SELECT nombre_fisico AS en_diccionario_sin_columna
+  FROM workspace.yelp_gov.diccionario_datos
+  WHERE nombre_fisico NOT IN (
+    SELECT concat_ws('.', 'workspace', table_schema, table_name, column_name)
+    FROM workspace.information_schema.columns
+    WHERE table_schema IN ('yelp_silver', 'yelp_gold'))
+""")
+display(sobrantes)
+assert faltantes.count() == 0, "❌ Hay columnas de silver/gold sin entrada en el diccionario"
+assert sobrantes.count() == 0, "❌ El diccionario documenta columnas que no existen en el catálogo"
+print("✔ Contrato exacto: diccionario ↔ catálogo (silver y gold)")
+
 # COMMAND ----------
 
 # DBTITLE 1: Validador 2 — Trazabilidad con el glosario (E4.1) y las reglas DQ (E5)
@@ -134,6 +147,25 @@ assert sin_reten == 0, f"❌ {sin_reten} elementos sin política de retención"
 print(f"✔ Diccionario íntegro · reglas DQ citadas: {citadas.count()} · "
       f"sin correspondencia en E5: {huerfanas.count()}")
 display(huerfanas)
+assert huerfanas.count() == 0, "❌ El diccionario cita reglas DQ-nnn que no existen en dq_reglas"
+
+# COMMAND ----------
+
+# DBTITLE 1,Validador 3 — Obligatoriedad del diccionario
+# DBTITLE 1,Validador 3 — Obligatoriedad del diccionario coherente con el DDL (tablas, no vistas)
+# La metadata técnica se hereda del DDL: si el diccionario dice «Obligatorio», la columna debe ser NOT NULL, y viceversa.
+# Para una columna exigida por una regla y no por el motor, escribir en el Excel «Opcional (se exige con DQ-nnn)».
+dif = spark.sql("""
+  SELECT d.nombre_fisico, d.obligatorio AS en_diccionario, c.is_nullable AS admite_nulos_en_ddl
+  FROM workspace.yelp_gov.diccionario_datos d
+  JOIN workspace.information_schema.columns c
+    ON d.nombre_fisico = concat_ws('.', 'workspace', c.table_schema, c.table_name, c.column_name)
+  JOIN workspace.information_schema.tables tb
+    ON tb.table_schema = c.table_schema AND tb.table_name = c.table_name AND tb.table_type <> 'VIEW'
+  WHERE (lower(d.obligatorio) LIKE 'obligatorio%') <> (c.is_nullable = 'NO')
+""")
+display(dif)
+assert dif.count() == 0, f"❌ {dif.count()} columnas con obligatoriedad distinta entre el diccionario y el DDL"
 
 # COMMAND ----------
 
@@ -159,21 +191,16 @@ print("Tags de clasificación aplicados ✔ (insumo directo de E6)")
 
 # MAGIC %md
 # MAGIC ### Definition of Done (E4.2)
-# MAGIC - [ ] 100 % de las columnas de `yelp_silver` y `yelp_gold` presentes en el diccionario.
-# MAGIC - [ ] Todo elemento con responsable, clasificación de sensibilidad y política de retención.
-# MAGIC - [ ] Toda regla citada como `DQ-nnn` existe en `yelp_gov.dq_reglas` (sin huérfanas).
-# MAGIC - [ ] Los `nombre_fisico` coinciden exactamente con Unity Catalog (validador 1 en 100 %).
-# MAGIC - [ ] Tags de clasificación aplicados y visibles en el catálogo.
-# MAGIC - [ ] Hoja "Diccionario resumido" coherente con la hoja completa (es la de la sustentación).
-# MAGIC - [ ] Párrafo de reflexión: ¿qué se hereda del catálogo y qué debe negociarse con el negocio?
+# MAGIC - [x] 100 % de las columnas de `yelp_silver` y `yelp_gold` presentes en el diccionario.
+# MAGIC - [x] Todo elemento con responsable, clasificación de sensibilidad y política de retención.
+# MAGIC - [x] Toda regla citada como `DQ-nnn` existe en `yelp_gov.dq_reglas` (sin huérfanas).
+# MAGIC - [x] Los `nombre_fisico` coinciden exactamente con Unity Catalog (validador 1 en 100 %).
+# MAGIC - [x] Tags de clasificación aplicados y visibles en el catálogo.
+# MAGIC - [x] Hoja "Diccionario resumido" coherente con la hoja completa (es la de la sustentación).
+# MAGIC - [x] Párrafo de reflexión: ¿qué se hereda del catálogo y qué debe negociarse con el negocio?
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC ### Reflexión: ¿qué se hereda del catálogo y qué se negocia con el negocio?
 # MAGIC Del catálogo se hereda lo que la plataforma ya sabe del dato: el nombre físico, el tipo, si admite nulos y las claves, tal como quedaron en el DDL de E3. Eso no se discute: se lee de `information_schema`, y el validador 1 comprueba que el Excel coincida con la plataforma. Lo que ningún catálogo sabe es qué **significa** el dato, **quién responde** por él y **quién puede verlo**: la descripción de negocio, el dominio, el uso permitido, la retención, el Data Owner y la clasificación de sensibilidad. Eso se negoció entre áreas. Producto y Trust & Safety se disputaban la propiedad de Reseña, Usuario y Tip (Acta 01), y Marketing y Data Science pedían ver las marcas de sospecha, que terminaron clasificadas como Restringido (Acta 02). Por eso, en nuestro caso, la clasificación no se hereda del catálogo: se decide con el negocio y este notebook la aplica al catálogo como tag, donde E6 la usa para dar permisos. La lección es que la metadata técnica se puede automatizar, pero la de negocio no: un diccionario generado solo desde el catálogo diría qué tipo tiene una columna, pero no si se puede compartir ni con quién.
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC

@@ -24,7 +24,7 @@
 # MAGIC > La tabla Delta tiene **exactamente las 12 columnas de la plantilla**: el Excel no se
 # MAGIC > "traduce", se carga. Ese es el principio de un glosario vivo.
 # MAGIC
-# MAGIC > **Trazabilidad —** este entregable **implementa** la sección «Anexo · Glosario de términos de negocio» del
+# MAGIC > **Trazabilidad —** este entregable **implementa** la sección «Anexo A · Glosario de términos de negocio» del
 # MAGIC > **Documento Formal de Arquitectura de Datos**. El Excel institucional se anexa al documento; esta tabla Delta es la versión consultable desde Genie y el dashboard de gobierno.
 
 # COMMAND ----------
@@ -96,11 +96,11 @@ print(f"✔ Glosario válido: {n} términos · {sin_dominio} dominios · "
 
 # MAGIC %md
 # MAGIC ### Definition of Done (E4.1)
-# MAGIC - [ ] ≥20 términos en el formato institucional, sin duplicados y cubriendo ≥4 dominios.
-# MAGIC - [ ] Todo término con propietario correspondiente a un área real del caso.
-# MAGIC - [ ] Los 3 conflictos semánticos del caso resueltos con término propio.
-# MAGIC - [ ] La definición de negocio no nombra tablas ni columnas (eso va en la definición técnica).
-# MAGIC - [ ] Acta breve (markdown aquí) de **cómo se negociaron** las definiciones en el grupo.
+# MAGIC - [x] ≥20 términos en el formato institucional, sin duplicados y cubriendo ≥4 dominios.
+# MAGIC - [x] Todo término con propietario correspondiente a un área real del caso.
+# MAGIC - [x] Los 3 conflictos semánticos del caso resueltos con término propio.
+# MAGIC - [x] La definición de negocio no nombra tablas ni columnas (eso va en la definición técnica).
+# MAGIC - [x] Acta breve (markdown aquí) de **cómo se negociaron** las definiciones en el grupo.
 
 # COMMAND ----------
 

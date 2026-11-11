@@ -1,4 +1,8 @@
 # Databricks notebook source
+# /// script
+# [tool.databricks.environment]
+# environment_version = "6"
+# ///
 # MAGIC %md
 # MAGIC # E6 · Controles técnicos de gobierno en Unity Catalog
 # MAGIC **Cierra con:** M2 (diseño) + M5 (implementación en plataforma)
@@ -18,7 +22,7 @@
 # MAGIC tags de clasificación, permisos (GRANT) por rol, enmascaramiento de datos personales, la matriz RACI
 # MAGIC como tabla consultable y la evidencia de lineage.
 # MAGIC
-# MAGIC En Free Edition hay un solo workspace y no todos los integrantes tienen cuenta: cada cuenta **actúa** un rol del caso.
+# MAGIC En Free Edition hay un solo workspace: los cinco integrantes tienen cuenta y cada cuenta **actúa** un rol del caso.
 # MAGIC
 # MAGIC | Rol del caso | Persona del caso | Cuenta que lo actúa | Permisos |
 # MAGIC |---|---|---|---|
@@ -109,6 +113,20 @@ for tabla, col in RESTRINGIDAS:
 
 # COMMAND ----------
 
+# DBTITLE 1,Control 1c — Tablas de gobierno con datos sensibles (yelp_gov)
+# DBTITLE 1,Control 1c — Tablas de gobierno con datos sensibles (yelp_gov)
+SENSIBLES_GOV = {
+    "solicitudes_supresion":      "confidencial",   # contiene user_id de titulares (5.4)
+    "dq_parametros_restringidos": "restringido",    # parámetro de DQ-016 (5.3, Actas 02 y 04)
+    "ex_resenas_enriquecidas":    "restringido",    # bonus IA: marca candidata antifraude, experimental (EX)
+}
+for t, clase in SENSIBLES_GOV.items():
+    if spark.catalog.tableExists(f"workspace.yelp_gov.{t}"):
+        ejecutar(f"ALTER TABLE workspace.yelp_gov.{t} SET TAGS ('clasificacion' = '{clase}')")
+# La cuarentena se etiqueta en cada corrida dentro de E7/02 (se reescribe en cada ejecución).
+
+# COMMAND ----------
+
 # DBTITLE 1,Evidencia de tags
 # MAGIC %sql
 # MAGIC SELECT schema_name, table_name, column_name, tag_value AS clasificacion
@@ -144,6 +162,13 @@ for email in STEWARDS:
         ejecutar(f"GRANT USE SCHEMA, SELECT ON SCHEMA workspace.yelp_{capa} TO {q(email)}")
     ejecutar(f"GRANT USE SCHEMA, SELECT, MODIFY ON SCHEMA workspace.yelp_gov TO {q(email)}")
     revocar("REVOKE ALL PRIVILEGES ON SCHEMA workspace.yelp_bronze", email)
+
+# El documento asigna el acceso Restringido al grupo data_stewards (5.3, CE-07): se otorga al grupo además de a los correos
+for priv, obj in [("USE CATALOG", "CATALOG workspace"),
+                  ("USE SCHEMA, SELECT", "SCHEMA workspace.yelp_silver"),
+                  ("USE SCHEMA, SELECT", "SCHEMA workspace.yelp_gold"),
+                  ("USE SCHEMA, SELECT, MODIFY", "SCHEMA workspace.yelp_gov")]:
+    ejecutar(f"GRANT {priv} ON {obj} TO `data_stewards`")
 
 # Gold de consumo general: todas las tablas y vistas de yelp_gold salvo las dos restringidas.
 # Se lee del catálogo en cada corrida → re-ejecutar esta celda después de E7/03 (cuando gold ya existe).
@@ -199,6 +224,11 @@ for t in sorted(TABLAS_GOLD_RESTRINGIDAS & set(TABLAS_GOLD)):
 if spark.catalog.tableExists("workspace.yelp_gov.dq_reglas"):
     print("— workspace.yelp_gov.dq_reglas (parámetro Restringido de DQ-016)")
     display(spark.sql("SHOW GRANTS ON TABLE workspace.yelp_gov.dq_reglas"))
+
+for t in ["dq_parametros_restringidos", "solicitudes_supresion"]:
+    if spark.catalog.tableExists(f"workspace.yelp_gov.{t}"):
+        print(f"— workspace.yelp_gov.{t} (solo steward y custodians)")
+        display(spark.sql(f"SHOW GRANTS ON TABLE workspace.yelp_gov.{t}"))
 
 # COMMAND ----------
 
@@ -271,11 +301,13 @@ ejecutar("ALTER TABLE workspace.yelp_silver.slv_tip    ALTER COLUMN text SET MAS
 # MAGIC 3. Esto responde al dolor de Trust & Safety: "reglas de fraude sin linaje claro" (MOT-01).
 # MAGIC
 # MAGIC ### Definition of Done (E6)
-# MAGIC - [ ] Tags de clasificación aplicados a schemas, tablas y columnas (celda de evidencia).
-# MAGIC - [ ] GRANTs ejecutados + captura de Leila (Data Owner) intentando, y fallando, leer bronze.
-# MAGIC - [ ] CE-07: captura de Juan Carlos o Edgar intentando, y fallando, leer `gld_dim_usuario_riesgo`, y de David leyéndola.
-# MAGIC - [ ] Captura de Leila leyendo `vw_dq_reglas_publica` (DQ-016 aparece como `[Restringido]`) y fallando al leer `dq_reglas`.
-# MAGIC - [ ] Máscara funcionando: captura del mismo SELECT con Leila (Data Owner, enmascarado) y con David (Data Steward, en claro).
-# MAGIC - [ ] Matriz RACI cargada en `yelp_gov.matriz_raci`.
-# MAGIC - [ ] Lineage de `review` documentado con capturas.
+# MAGIC - [x] Tags de clasificación en schemas, tablas y columnas, incluidas cuarentena y tablas sensibles de gov.
+# MAGIC - [x] GRANT por rol y al grupo data_stewards (celda de evidencia).
+# MAGIC - [ ] Captura de Leila (Data Owner) fallando al leer bronze.
+# MAGIC - [ ] Captura de Leila leyendo `vw_dq_reglas_publica` y fallando al leer `dq_parametros_restringidos`.
+# MAGIC - [x] CE-07: consumidor sin acceso a gold restringida, Data Owner sin acceso y custodian con acceso (img/CE-07_*).
+# MAGIC - [x] Máscara: Leila enmascarado y David en claro (img/E6_mascara_*).
+# MAGIC - [x] Matriz RACI cargada en `yelp_gov.matriz_raci`.
+# MAGIC - [x] Lineage de review (CE-01) y de las 5 tablas silver (img/).
+# MAGIC - [ ] Lineage `slv_check_in → gld_checkins_diarios` (Operaciones Comerciales).
 # MAGIC

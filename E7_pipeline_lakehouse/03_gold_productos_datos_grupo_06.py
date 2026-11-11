@@ -32,7 +32,7 @@
 # MAGIC
 # MAGIC > **Trazabilidad —** implementa las secciones 4.3, 6.4 y 7 del Documento Formal. Las tablas y la vista se **definen en E3**
 # MAGIC > (tipos, COMMENT, PK/FK, retención: el mismo patrón que silver) y aquí solo se **cargan** con `insertInto`, que respeta ese DDL.
-# MAGIC > Las 51 columnas (45 en tablas y 6 en la vista) son las del Diccionario de Datos (Grupo06).
+# MAGIC > Las 51 columnas (45 en tablas y 6 en la vista) son las del Diccionario de Datos (Grupo06).Incluye el VACUUM semanal que completa ADR-04 y la supresión de la sección 5.4.
 
 # COMMAND ----------
 
@@ -141,6 +141,7 @@ spark.sql(f"""
   WHERE NOT ({R['DQ-017'].expresion_sql})""").createOrReplaceTempView("cuentas_dq017")
 
 display(spark.sql("SELECT regla, count(*) AS resenas_marcadas FROM marcas_resena GROUP BY regla ORDER BY regla"))
+# Nota: DQ-010 marca TODAS las reseñas de un grupo con texto repetido (también la primera), porque no se sabe cuál es la original. E5 mide la regla como filas − combinaciones distintas (1.124 repeticiones). Por eso el conteo de marcas DQ-010 en gold es mayor que la cifra de la sección 6.3: son dos medidas distintas del mismo fenómeno.
 
 # COMMAND ----------
 
@@ -155,7 +156,7 @@ cargar("gld_salud_resenas", spark.sql(f"""
          CAST('{EJECUCION_TS}' AS TIMESTAMP)                   AS ejecucion_ts
   FROM {SLV}.slv_review r
   LEFT JOIN m USING (review_id)
-  WHERE r.user_id IS NOT NULL AND r.`date` IS NOT NULL   -- obligatorios en gold (DQ-005 ya los aísla en silver)
+  WHERE r.user_id IS NOT NULL AND r.date IS NOT NULL AND r.date <= current_date() -- DQ-007
 """))
 
 # COMMAND ----------
@@ -278,6 +279,25 @@ print(f"✔ Bitácora: {len(BITACORA)} registros · duración total {BITACORA[-1
 
 # COMMAND ----------
 
+# DBTITLE 1,VACUUM semanal (ADR-04 · supresión de la sección 5.4)
+# Sin VACUUM, la retención de 30 días no elimina físicamente los archivos antiguos. Se ejecuta los domingos para no gastar
+# cuota a diario; borra los archivos de versiones con más de 30 días (delta.deletedFileRetentionDuration).
+import datetime
+TABLAS_CON_DATOS_PERSONALES = (
+    [f"workspace.yelp_bronze.brz_{e}" for e in ["user", "review", "tip"]] +
+    [f"workspace.yelp_silver.slv_{e}" for e in ["user", "review", "tip"]] +
+    [f"workspace.yelp_gov.cuarentena_{e}" for e in ["user", "review", "tip"]] +
+    ["workspace.yelp_gold.gld_salud_resenas", "workspace.yelp_gold.gld_dim_usuario_riesgo"])
+if datetime.date.today().weekday() == 6:
+    for t in TABLAS_CON_DATOS_PERSONALES:
+        if spark.catalog.tableExists(t):
+            spark.sql(f"VACUUM {t}")
+            print(f"✔ VACUUM {t}")
+else:
+    print("ℹ️ VACUUM solo los domingos (ADR-04)")
+
+# COMMAND ----------
+
 # MAGIC %md
 # MAGIC ### Definition of Done (E7.3)
 # MAGIC - [x] Esquema estrella completo: 3 dimensiones (`gld_dim_negocio`, `gld_dim_usuario_riesgo`, `gld_dim_tiempo`), 1 hecho (`gld_salud_resenas`) y 3 hechos agregados de KPIs, más la vista `vw_rating_verificado_negocio`.
@@ -286,9 +306,10 @@ print(f"✔ Bitácora: {len(BITACORA)} registros · duración total {BITACORA[-1
 # MAGIC - [x] Retención de 30 días en el historial de Delta (ADR-04), declarada en el DDL de E3.
 # MAGIC - [x] CE-06 verificado: toda reseña sospechosa tiene reglas, versión y ejecución.
 # MAGIC - [x] Tabla stakeholder → producto → pregunta completa (arriba).
-# MAGIC - [ ] Re-ejecutar E4/02 (tags) y E6 (permisos de gold) después de la primera corrida.
-# MAGIC - [ ] CE-01: captura del Lineage `brz_review → slv_review → gld_salud_resenas` en Catalog Explorer.
-# MAGIC - [ ] CE-03: captura de `DESCRIBE HISTORY workspace.yelp_gold.gld_salud_resenas`.
+# MAGIC - [x] Re-ejecutar E4/02 (tags) y E6 (permisos de gold) después de la primera corrida.
+# MAGIC - [x] CE-01: captura del Lineage `brz_review → slv_review → gld_salud_resenas` en Catalog Explorer. ver img/CE-01_lineage_gld_salud_resenas.png
+# MAGIC - [x] CE-03: captura de `DESCRIBE HISTORY workspace.yelp_gold.gld_salud_resenas`. ver img/CE-03 Historial y versiones de gld_salud_resenas.png
+# MAGIC - [x] VACUUM semanal de las tablas con datos personales (ADR-04, 5.4).
 
 # COMMAND ----------
 

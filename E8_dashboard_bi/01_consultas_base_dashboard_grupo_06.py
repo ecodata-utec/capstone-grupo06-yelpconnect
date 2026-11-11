@@ -7,27 +7,24 @@
 # MAGIC # E8 · Dashboard de BI (AI/BI Dashboard + Genie) — Grupo 06
 # MAGIC **Cierra con:** M9 BI y Visualización
 # MAGIC
-# MAGIC El tablero tiene **dos páginas** (sección 7.2 del Documento Formal). Cada consulta de este notebook es un
-# MAGIC *dataset* del tablero y declara el requerimiento (REQ-nn de 7.1) y el stakeholder al que responde.
+# MAGIC Se publican **dos tableros** (sección 7.2 del Documento Formal). Cada consulta es un *dataset* y declara su REQ-nn.
 # MAGIC
-# MAGIC | Página | Audiencia | Requerimientos | Fuentes |
+# MAGIC | Tablero · página | Audiencia | Requerimientos | Fuentes |
 # MAGIC |---|---|---|---|
-# MAGIC | **Integridad y calidad de datos** | Todas las áreas | REQ-01, REQ-04, REQ-05, REQ-06, REQ-07 + KPIs de gobierno de la CDO | `gld_kpi_resenas_sospechosas_negocio`, `gld_kpi_calidad_datos`, `gld_checkins_diarios`, `vw_rating_verificado_negocio`, `gld_dim_negocio`, `yelp_gov` (gobierno) |
-# MAGIC | **Alertas de Trust & Safety** | Solo `data_stewards` | REQ-02, REQ-03 (y REQ-08 sin visual) | `gld_dim_usuario_riesgo`, `gld_salud_resenas` (Restringido) |
+# MAGIC | **1 · Integridad y calidad — Negocio** | Todas las áreas | REQ-01, REQ-05, REQ-06, REQ-07 | `gld_kpi_resenas_sospechosas_negocio`, `vw_rating_verificado_negocio`, `gld_checkins_diarios`, dimensiones |
+# MAGIC | **1 · Integridad y calidad — Gobierno** | CDO y todas las áreas | REQ-04, REQ-09, REQ-10 | `gld_kpi_calidad_datos`, `yelp_gov` (diccionario, glosario, matriz RACI, excepciones, bitácora) |
+# MAGIC | **2 · Alertas de Trust & Safety** | Solo `data_stewards` | REQ-02, REQ-03 (REQ-08 sin visual) | `gld_dim_usuario_riesgo`, `gld_salud_resenas` (Restringido) |
 # MAGIC
-# MAGIC Reglas: el tablero consume **solo `yelp_gold` y `yelp_gov`**, nunca silver ni bronze.
-# MAGIC
-# MAGIC > **Cómo se cumple "visible solo para data_stewards".** Un AI/BI Dashboard no permite ocultar una página a
-# MAGIC > algunos lectores. Por eso la página de Trust & Safety se publica como **un segundo tablero**, compartido solo con
-# MAGIC > `data_stewards` y publicado **sin credenciales embebidas** (cada lector consulta con sus propios permisos, así E6
-# MAGIC > decide qué ve). Proponer al grupo ajustar la redacción de 7.2: "dos tableros" o "un tablero por audiencia".
+# MAGIC El tablero 2 es aparte porque AI/BI no permite ocultar una página a algunos lectores. El tablero 1 se publica **con
+# MAGIC credenciales embebidas** (la página Gobierno lee `yelp_gov`, a la que los consumidores no tienen acceso directo); el
+# MAGIC tablero 2, **sin credenciales embebidas**, para que cada lector consulte con sus propios permisos (CE-07).
 # MAGIC
 # MAGIC > **Trazabilidad —** implementa la sección 7 «Requerimientos de información y KPIs». Un KPI sin stakeholder que lo pidió no va al tablero.
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Página 1 · Integridad y calidad de datos (todas las áreas)
+# MAGIC ## Tablero 1 · Página Negocio
 
 # COMMAND ----------
 
@@ -65,49 +62,23 @@
 
 # COMMAND ----------
 
-# DBTITLE 1,Q3 · REQ-04 — Cumplimiento de reglas críticas en la última ejecución (Laura Hernández, CDO)
+# DBTITLE 1,Q2b · REQ-01 — Variación mensual del % de reseñas sospechosas por negocio (Rafael Nakamura, T&S)
 # MAGIC %sql
-# MAGIC -- KPI: reglas de criticidad alta que cumplen su umbral o tienen excepción vigente / total de reglas altas (meta 100 %, CE-04)
-# MAGIC WITH ultima AS (
-# MAGIC   SELECT * FROM workspace.yelp_gold.gld_kpi_calidad_datos
-# MAGIC   WHERE ejecucion_ts = (SELECT max(ejecucion_ts) FROM workspace.yelp_gold.gld_kpi_calidad_datos))
-# MAGIC SELECT max(ejecucion_ts)                                                         AS ejecucion,
-# MAGIC        count_if(criticidad = 'alta')                                              AS reglas_criticas,
-# MAGIC        count_if(criticidad = 'alta' AND paso)                                     AS cumplen,
-# MAGIC        count_if(criticidad = 'alta' AND NOT paso AND con_excepcion)               AS con_excepcion_vigente,
-# MAGIC        count_if(criticidad = 'alta' AND NOT paso AND NOT con_excepcion)           AS fallan_sin_excepcion,
-# MAGIC        round(try_divide(100.0 * count_if(criticidad = 'alta' AND (paso OR con_excepcion)),
-# MAGIC                         count_if(criticidad = 'alta')), 1)                        AS pct_cumplimiento_criticas
-# MAGIC FROM ultima;
-
-# COMMAND ----------
-
-# DBTITLE 1,Q4 · REQ-04 — Detalle de reglas fallidas en la última ejecución (Laura Hernández, CDO)
+# MAGIC -- DBTITLE 1,Q2b · REQ-01 — Variación mensual del % de reseñas sospechosas por negocio (Rafael Nakamura, T&S)
 # MAGIC %sql
-# MAGIC -- Tabla para decidir si una excepción se renueva o se cierra. Las fechas vienen de dq_excepciones (Acta 05).
-# MAGIC SELECT k.regla_id, k.dimension, k.criticidad, k.umbral_pct, k.pct_cumplimiento, k.con_excepcion,
-# MAGIC        ex.fecha_caducidad,
-# MAGIC        datediff(ex.fecha_caducidad, current_date())  AS dias_para_caducar,
-# MAGIC        ex.acta
-# MAGIC FROM workspace.yelp_gold.gld_kpi_calidad_datos k
-# MAGIC LEFT JOIN workspace.yelp_gov.dq_excepciones ex ON ex.regla_id = k.regla_id
-# MAGIC   AND current_date() BETWEEN ex.fecha_aprobacion AND ex.fecha_caducidad
-# MAGIC WHERE k.ejecucion_ts = (SELECT max(ejecucion_ts) FROM workspace.yelp_gold.gld_kpi_calidad_datos)
-# MAGIC   AND NOT k.paso
-# MAGIC ORDER BY CASE k.criticidad WHEN 'alta' THEN 1 ELSE 2 END, k.pct_cumplimiento;
-
-# COMMAND ----------
-
-# DBTITLE 1,Q5 · REQ-04 — Tendencia de cumplimiento por dimensión de calidad (Laura Hernández, CDO)
-# MAGIC %sql
-# MAGIC -- Reemplaza la Q2 del esqueleto del curso: usa gold (gld_kpi_calidad_datos) y no dq_reglas, que guarda el
-# MAGIC -- parámetro Restringido de DQ-016 (5.3).
-# MAGIC SELECT ejecucion_ts, dimension,
-# MAGIC        round(avg(pct_cumplimiento), 2)          AS cumplimiento_promedio,
-# MAGIC        count_if(NOT paso)                       AS reglas_en_rojo
-# MAGIC FROM workspace.yelp_gold.gld_kpi_calidad_datos
-# MAGIC GROUP BY ejecucion_ts, dimension
-# MAGIC ORDER BY ejecucion_ts, dimension;
+# MAGIC -- Último mes completo de la muestra (enero 2022 está incompleto) frente al mes anterior, en puntos porcentuales.
+# MAGIC WITH ult AS (SELECT add_months(max(mes), -1) AS mes_ref FROM workspace.yelp_gold.gld_kpi_resenas_sospechosas_negocio)
+# MAGIC SELECT n.name AS negocio, k.mes, k.n_resenas, k.n_sospechosas,
+# MAGIC        k.pct_sospechosas, k.pct_sospechosas_mes_anterior,
+# MAGIC        k.pct_sospechosas - k.pct_sospechosas_mes_anterior AS variacion_pp
+# MAGIC FROM workspace.yelp_gold.gld_kpi_resenas_sospechosas_negocio k
+# MAGIC JOIN workspace.yelp_gold.gld_dim_negocio n USING (business_id)
+# MAGIC CROSS JOIN ult
+# MAGIC WHERE k.mes = ult.mes_ref
+# MAGIC   AND k.pct_sospechosas_mes_anterior IS NOT NULL
+# MAGIC   AND k.n_resenas >= 5
+# MAGIC ORDER BY variacion_pp DESC
+# MAGIC LIMIT 20;
 
 # COMMAND ----------
 
@@ -173,23 +144,86 @@
 
 # COMMAND ----------
 
-# DBTITLE 1,Q10 · KPIs de gobierno (Laura Hernández, CDO)
+# DBTITLE 1,Q3 · REQ-04 — Cumplimiento de reglas críticas en la última ejecución (Laura Hernández, CDO)
 # MAGIC %sql
-# MAGIC -- Corrige la Q3 del esqueleto: en el diccionario la columna se llama descripcion_negocio (no descripcion_columna).
+# MAGIC -- KPI: reglas de criticidad alta que cumplen su umbral o tienen excepción vigente / total de reglas altas (meta 100 %, CE-04)
+# MAGIC WITH ultima AS (
+# MAGIC   SELECT * FROM workspace.yelp_gold.gld_kpi_calidad_datos
+# MAGIC   WHERE ejecucion_ts = (SELECT max(ejecucion_ts) FROM workspace.yelp_gold.gld_kpi_calidad_datos))
+# MAGIC SELECT max(ejecucion_ts)                                                         AS ejecucion,
+# MAGIC        count_if(criticidad = 'alta')                                              AS reglas_criticas,
+# MAGIC        count_if(criticidad = 'alta' AND paso)                                     AS cumplen,
+# MAGIC        count_if(criticidad = 'alta' AND NOT paso AND con_excepcion)               AS con_excepcion_vigente,
+# MAGIC        count_if(criticidad = 'alta' AND NOT paso AND NOT con_excepcion)           AS fallan_sin_excepcion,
+# MAGIC        round(try_divide(100.0 * count_if(criticidad = 'alta' AND (paso OR con_excepcion)),
+# MAGIC                         count_if(criticidad = 'alta')), 1)                        AS pct_cumplimiento_criticas
+# MAGIC FROM ultima;
+
+# COMMAND ----------
+
+# DBTITLE 1,Q4 · REQ-04 — Detalle de reglas fallidas en la última ejecución (Laura Hernández, CDO)
+# MAGIC %sql
+# MAGIC -- Tabla para decidir si una excepción se renueva o se cierra. Las fechas vienen de dq_excepciones (Acta 05 y 06).
+# MAGIC SELECT k.regla_id, k.dimension, k.criticidad, k.umbral_pct, k.pct_cumplimiento, k.con_excepcion,
+# MAGIC        ex.fecha_caducidad,
+# MAGIC        datediff(ex.fecha_caducidad, current_date())  AS dias_para_caducar,
+# MAGIC        ex.acta
+# MAGIC FROM workspace.yelp_gold.gld_kpi_calidad_datos k
+# MAGIC LEFT JOIN workspace.yelp_gov.dq_excepciones ex ON ex.regla_id = k.regla_id
+# MAGIC   AND current_date() BETWEEN ex.fecha_aprobacion AND ex.fecha_caducidad
+# MAGIC WHERE k.ejecucion_ts = (SELECT max(ejecucion_ts) FROM workspace.yelp_gold.gld_kpi_calidad_datos)
+# MAGIC   AND NOT k.paso
+# MAGIC ORDER BY CASE k.criticidad WHEN 'alta' THEN 1 ELSE 2 END, k.pct_cumplimiento;
+
+# COMMAND ----------
+
+# DBTITLE 1,Q5 · REQ-04 — Tendencia de cumplimiento por dimensión de calidad (Laura Hernández, CDO)
+# MAGIC %sql
+# MAGIC -- Reemplaza la Q2 del esqueleto del curso: usa gold (gld_kpi_calidad_datos) y no dq_reglas, que guarda el
+# MAGIC -- parámetro Restringido de DQ-016 (5.3).
+# MAGIC SELECT ejecucion_ts, dimension,
+# MAGIC        round(avg(pct_cumplimiento), 2)          AS cumplimiento_promedio,
+# MAGIC        count_if(NOT paso)                       AS reglas_en_rojo
+# MAGIC FROM workspace.yelp_gold.gld_kpi_calidad_datos
+# MAGIC GROUP BY ejecucion_ts, dimension
+# MAGIC ORDER BY ejecucion_ts, dimension;
+
+# COMMAND ----------
+
+# DBTITLE 1,REQ-09 — Cobertura de documentación y ownership (Laura Hernández, CDO) %sql
+# MAGIC %sql
+# MAGIC -- DBTITLE 1,Q10 · REQ-09 — Cobertura de documentación y ownership (Laura Hernández, CDO)
+# MAGIC
 # MAGIC SELECT
 # MAGIC   (SELECT round(try_divide(100.0 * count_if(descripcion_negocio IS NOT NULL), count(*)), 1)
-# MAGIC      FROM workspace.yelp_gov.diccionario_datos)                                   AS pct_columnas_documentadas,
+# MAGIC      FROM workspace.yelp_gov.diccionario_datos)                                       AS pct_columnas_documentadas,
+# MAGIC   (SELECT round(try_divide(100.0 * count_if(responsable IS NOT NULL), count(*)), 1)
+# MAGIC      FROM workspace.yelp_gov.diccionario_datos)                                       AS pct_columnas_con_responsable,
+# MAGIC   (SELECT round(try_divide(100.0 * count(ct.column_name), count(*)), 1)
+# MAGIC      FROM workspace.information_schema.columns c
+# MAGIC      JOIN workspace.information_schema.tables tb
+# MAGIC        ON tb.table_schema = c.table_schema AND tb.table_name = c.table_name AND tb.table_type <> 'VIEW'
+# MAGIC      LEFT JOIN workspace.information_schema.column_tags ct
+# MAGIC        ON ct.schema_name = c.table_schema AND ct.table_name = c.table_name
+# MAGIC       AND ct.column_name = c.column_name AND ct.tag_name = 'clasificacion'
+# MAGIC      WHERE c.table_schema IN ('yelp_silver', 'yelp_gold'))                            AS pct_columnas_con_tag,
 # MAGIC   (SELECT round(try_divide(100.0 * count_if(responsable IS NOT NULL AND sensibilidad IS NOT NULL), count(*)), 1)
 # MAGIC      FROM workspace.yelp_gov.diccionario_datos
-# MAGIC      WHERE nombre_fisico LIKE 'workspace.yelp_gold.gld_salud_resenas.%')          AS pct_ce05_salud_resenas,
-# MAGIC   (SELECT count(*) FROM workspace.yelp_gov.matriz_raci WHERE data_owner IS NOT NULL) AS entidades_con_owner,
-# MAGIC   (SELECT count(*) FROM workspace.yelp_gov.glosario_negocio)                      AS terminos_glosario,
+# MAGIC      WHERE nombre_fisico LIKE 'workspace.yelp_gold.gld_salud_resenas.%')              AS pct_ce05_salud_resenas,
+# MAGIC   (SELECT count(*) FROM workspace.yelp_gov.matriz_raci
+# MAGIC      WHERE data_owner IS NOT NULL AND data_steward IS NOT NULL)                       AS entidades_con_owner_y_steward,
+# MAGIC   (SELECT count(*) FROM workspace.yelp_gov.glosario_negocio)                          AS terminos_glosario,
+# MAGIC   (SELECT round(try_divide(100.0 * count_if(propietario IS NOT NULL), count(*)), 1)
+# MAGIC      FROM workspace.yelp_gov.glosario_negocio)                                        AS pct_terminos_con_propietario,
 # MAGIC   (SELECT count(DISTINCT ejecucion_ts) FROM workspace.yelp_gold.gld_kpi_calidad_datos) AS ejecuciones_calidad;
 
 # COMMAND ----------
 
-# DBTITLE 1,Q11 · Operación del pipeline — duración por capa y corrida (Equipo de Data Platform · FinOps 8.2)
+# DBTITLE 1,Q11 · REQ-10 — Frescura y duración del pipeline (Laura Hernández, CDO · Data Platform)
 # MAGIC %sql
+# MAGIC
+# MAGIC -- Responde cuándo se actualizó gold por última vez y cuánto tarda cada capa (sección 8.1: el tablero muestra la fecha de su última actualización).
+# MAGIC
 # MAGIC SELECT date_trunc('minute', ejecucion_ts) AS corrida, capa, max(duracion_seg) AS duracion_seg, sum(filas) AS filas
 # MAGIC FROM workspace.yelp_gov.pipeline_bitacora
 # MAGIC GROUP BY ALL
@@ -198,7 +232,7 @@
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Página 2 · Alertas de Trust & Safety (solo `data_stewards` — tablero aparte)
+# MAGIC ## Tablero 2 · Alertas de Trust & Safety (solo data_stewards)
 
 # COMMAND ----------
 
@@ -277,12 +311,13 @@ display(spark.sql("""
 # MAGIC - "Check-in válido", "visitas diarias" o "check-ins por día" = n_checkins de gld_checkins_diarios.
 # MAGIC - "Regla DQ" o "control de calidad" = gld_kpi_calidad_datos; usar siempre la última ejecucion_ts salvo que pidan historia.
 # MAGIC - "Excepción", "riesgo aceptado" = con_excepcion = TRUE.
+# MAGIC - "Variación" o "cómo evolucionó" = pct_sospechosas - pct_sospechosas_mes_anterior, en puntos porcentuales.
 # MAGIC - Los meses se representan por su primer día (columna mes).
 # MAGIC - Si preguntan por cuentas, usuarios concretos o por qué se marcó una reseña, responder que es información
 # MAGIC   Restringida de Trust & Safety y no está disponible en este espacio.
 # MAGIC ```
 # MAGIC **Preguntas de prueba** (capturar respuesta correcta y, si falla, la instrucción que lo corrigió):
-# MAGIC 1. ¿Qué 10 negocios tuvieron mayor porcentaje de reseñas sospechosas en el último mes?
+# MAGIC 1. ¿Qué 10 negocios tuvieron mayor porcentaje de reseñas sospechosas en diciembre de 2021?
 # MAGIC 2. ¿Cuántas reseñas verificadas recibió cada negocio abierto en 2021?
 # MAGIC 3. ¿Qué reglas de criticidad alta fallaron en la última ejecución y cuáles tienen excepción?
 # MAGIC 4. ¿Qué días de fin de semana tuvieron más check-ins válidos?
@@ -292,10 +327,8 @@ display(spark.sql("""
 
 # MAGIC %md
 # MAGIC ## Checklist de ensamblado en la UI
-# MAGIC - [ ] Tablero 1 «Plataforma de Datos YelpConnect — Grupo 06 · Integridad y calidad»: datasets Q1–Q11, ≥6 visuales,
-# MAGIC       filtros por negocio y mes, publicado **con credenciales embebidas** y compartido con todo el equipo.
-# MAGIC - [ ] Tablero 2 «… · Alertas de Trust & Safety»: datasets Q12–Q15 (Q14 con parámetro `:review_id`), compartido solo
-# MAGIC       con `data_stewards` y publicado **sin credenciales embebidas**.
+# MAGIC - [ ] Tablero 1 con dos páginas: **Negocio** (Q1, Q2, Q2b, Q6–Q9) y **Gobierno** (Q3–Q5, Q10, Q11); publicado con credenciales embebidas y compartido con todo el equipo.
+# MAGIC - [ ] Tablero 2 «Alertas de Trust & Safety» (Q12–Q15, Q14 con parámetro `:review_id`), compartido solo con el grupo `data_stewards` y publicado sin credenciales embebidas.
 # MAGIC - [ ] Cada visual con subtítulo «REQ-nn · stakeholder».
 # MAGIC - [ ] Refresco programado después del job de E7/04 (por ejemplo, 23:30 hora de Lima).
 # MAGIC - [ ] CE-07: captura de David viendo el tablero 2 y de Juan Carlos o Edgar sin acceso a él.
