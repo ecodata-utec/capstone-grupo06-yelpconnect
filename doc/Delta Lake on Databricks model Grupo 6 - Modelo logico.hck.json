@@ -1,0 +1,1183 @@
+{
+  "modelName": "Grupo 6 - Modelo logico",
+  "collections": [
+    {
+      "collectionName": "USER",
+      "type": "object",
+      "properties": [
+        {
+          "name": "user_id",
+          "hackoladeMeta": {},
+          "isActivated": true,
+          "primaryKey": true,
+          "mode": "string",
+          "subtype": "string",
+          "required": true,
+          "childType": "text",
+          "type": "string",
+          "compositeKey": [
+            "compositePartitionKey",
+            "compositeClusteringKey",
+            "compositePrimaryKey",
+            "compositeUniqueKey"
+          ],
+          "compositePartitionKey": false,
+          "compositeClusteringKey": false,
+          "GUID": "7247a435-dfc8-499b-b27f-f6b9929957e4",
+          "childRelationships": [
+            "2d591ebc-ec71-4b55-bdce-e546728e5b80",
+            "1ce8fccd-af38-4693-84ff-aede19885d30"
+          ],
+          "description": "Identificador único del usuario que realiza actividades en la plataforma.",
+          "error": {}
+        },
+        {
+          "name": "name",
+          "hackoladeMeta": {},
+          "isActivated": true,
+          "primaryKey": false,
+          "mode": "string",
+          "subtype": "string",
+          "required": false,
+          "childType": "text",
+          "type": "string",
+          "compositeKey": [
+            "compositePartitionKey",
+            "compositeClusteringKey",
+            "compositePrimaryKey",
+            "compositeUniqueKey"
+          ],
+          "compositePartitionKey": false,
+          "compositeClusteringKey": false,
+          "compositePrimaryKey": false,
+          "GUID": "ddf35869-457e-42de-a66c-84f5de9acc58",
+          "description": "Nombre del usuario registrado en la plataforma.",
+          "error": {}
+        },
+        {
+          "name": "review_count",
+          "hackoladeMeta": {},
+          "isActivated": true,
+          "exclusiveMinimum": false,
+          "exclusiveMaximum": false,
+          "primaryKey": false,
+          "mode": "int",
+          "required": false,
+          "childType": "numeric",
+          "type": "numeric",
+          "compositeKey": [
+            "compositePartitionKey",
+            "compositeClusteringKey",
+            "compositePrimaryKey",
+            "compositeUniqueKey"
+          ],
+          "compositePartitionKey": false,
+          "compositeClusteringKey": false,
+          "compositePrimaryKey": false,
+          "GUID": "2ef5db51-eae9-4c6a-a913-ab0e5249427b",
+          "description": "Cantidad total de reseñas realizadas por el usuario.",
+          "error": {}
+        },
+        {
+          "name": "yelping_since",
+          "hackoladeMeta": {},
+          "isActivated": true,
+          "primaryKey": false,
+          "required": false,
+          "childType": "date",
+          "type": "string",
+          "compositeKey": [
+            "compositePartitionKey",
+            "compositeClusteringKey",
+            "compositePrimaryKey",
+            "compositeUniqueKey"
+          ],
+          "compositePartitionKey": false,
+          "compositeClusteringKey": false,
+          "compositePrimaryKey": false,
+          "GUID": "7bbe948a-df0f-4fae-a5ea-7bba30d6fca4",
+          "description": "Fecha desde la cual el usuario pertenece o utiliza la plataforma.",
+          "error": {}
+        },
+        {
+          "name": "useful",
+          "hackoladeMeta": {},
+          "isActivated": true,
+          "exclusiveMinimum": false,
+          "exclusiveMaximum": false,
+          "primaryKey": false,
+          "mode": "int",
+          "required": false,
+          "childType": "numeric",
+          "type": "numeric",
+          "compositeKey": [
+            "compositePartitionKey",
+            "compositeClusteringKey",
+            "compositePrimaryKey",
+            "compositeUniqueKey"
+          ],
+          "compositePartitionKey": false,
+          "compositeClusteringKey": false,
+          "compositePrimaryKey": false,
+          "GUID": "fa2cd21b-70b1-45a2-8134-276f3952c80c",
+          "description": "Cantidad de votos o interacciones marcadas como útiles sobre la actividad del usuario.",
+          "error": {}
+        },
+        {
+          "name": "average_stars",
+          "hackoladeMeta": {},
+          "isActivated": true,
+          "exclusiveMinimum": false,
+          "exclusiveMaximum": false,
+          "primaryKey": false,
+          "mode": "decimal",
+          "required": false,
+          "childType": "numeric",
+          "type": "numeric",
+          "compositeKey": [
+            "compositePartitionKey",
+            "compositeClusteringKey",
+            "compositePrimaryKey",
+            "compositeUniqueKey"
+          ],
+          "compositePartitionKey": false,
+          "compositeClusteringKey": false,
+          "compositePrimaryKey": false,
+          "GUID": "a265b290-6aca-495b-a3e8-7bafbbe07bd4",
+          "description": "Promedio de calificaciones otorgadas por el usuario en sus reseñas.",
+          "error": {}
+        },
+        {
+          "name": "compliment_writer",
+          "hackoladeMeta": {},
+          "isActivated": true,
+          "exclusiveMinimum": false,
+          "exclusiveMaximum": false,
+          "primaryKey": false,
+          "mode": "int",
+          "required": false,
+          "childType": "numeric",
+          "type": "numeric",
+          "compositeKey": [
+            "compositePartitionKey",
+            "compositeClusteringKey",
+            "compositePrimaryKey",
+            "compositeUniqueKey"
+          ],
+          "compositePartitionKey": false,
+          "compositeClusteringKey": false,
+          "compositePrimaryKey": false,
+          "GUID": "00ba18c1-054e-4b0e-a6ec-856bd7fa4ecf",
+          "description": "Cantidad de reconocimientos recibidos por el usuario relacionados con la calidad de sus escritos.",
+          "error": {}
+        }
+      ],
+      "definitions": {
+        "type": "definitions",
+        "properties": [],
+        "GUID": "54f22a46-2eaf-4419-9bcf-a8f9395bf586"
+      },
+      "isActivated": true,
+      "additionalProperties": false,
+      "collectionUsers": [],
+      "tableIfNotExists": true,
+      "GUID": "904a8f39-ac52-40a3-98b1-bda3bb815767",
+      "hackoladeMeta": {
+        "validationErrors": {}
+      }
+    },
+    {
+      "collectionName": "REVIEW",
+      "type": "object",
+      "properties": [
+        {
+          "name": "review_id",
+          "hackoladeMeta": {},
+          "isActivated": true,
+          "primaryKey": true,
+          "mode": "string",
+          "subtype": "string",
+          "required": true,
+          "childType": "text",
+          "type": "string",
+          "compositeKey": [
+            "compositePartitionKey",
+            "compositeClusteringKey",
+            "compositePrimaryKey",
+            "compositeUniqueKey"
+          ],
+          "compositePartitionKey": false,
+          "compositeClusteringKey": false,
+          "GUID": "5ee07eb4-3c8e-4c9d-b10e-e5780410dfad",
+          "description": "Identificador único de la reseña.",
+          "error": {}
+        },
+        {
+          "name": "user_id",
+          "hackoladeMeta": {},
+          "isActivated": true,
+          "primaryKey": false,
+          "mode": "string",
+          "subtype": "string",
+          "required": false,
+          "childType": "text",
+          "type": "string",
+          "compositeKey": [
+            "compositePartitionKey",
+            "compositeClusteringKey",
+            "compositePrimaryKey",
+            "compositeUniqueKey"
+          ],
+          "compositePartitionKey": false,
+          "compositeClusteringKey": false,
+          "compositePrimaryKey": false,
+          "GUID": "e7a9aecc-0f25-4659-9f54-4c5adefd3485",
+          "relationshipType": "Foreign Key",
+          "foreignCollection": "904a8f39-ac52-40a3-98b1-bda3bb815767",
+          "foreignField": [
+            "904a8f39-ac52-40a3-98b1-bda3bb815767",
+            "7247a435-dfc8-499b-b27f-f6b9929957e4"
+          ],
+          "parentRelationship": "1ce8fccd-af38-4693-84ff-aede19885d30",
+          "description": "Identificador del usuario que realizó la reseña.",
+          "error": {}
+        },
+        {
+          "name": "business_id",
+          "hackoladeMeta": {},
+          "isActivated": true,
+          "primaryKey": false,
+          "mode": "string",
+          "subtype": "string",
+          "required": false,
+          "childType": "text",
+          "type": "string",
+          "compositeKey": [
+            "compositePartitionKey",
+            "compositeClusteringKey",
+            "compositePrimaryKey",
+            "compositeUniqueKey"
+          ],
+          "compositePartitionKey": false,
+          "compositeClusteringKey": false,
+          "compositePrimaryKey": false,
+          "GUID": "4c1bdbde-3152-4066-bfd7-dab1b2594a04",
+          "relationshipType": "Foreign Key",
+          "foreignCollection": "43e94224-d4f6-49f2-b046-887b74f06cf5",
+          "foreignField": [
+            "43e94224-d4f6-49f2-b046-887b74f06cf5",
+            "347bc150-f718-4edb-8849-81f662285cae"
+          ],
+          "parentRelationship": "2d8903a5-838a-42e7-89c8-4cd5b2692379",
+          "description": "Identificador del negocio al que corresponde la reseña.",
+          "error": {}
+        },
+        {
+          "name": "stars",
+          "hackoladeMeta": {},
+          "isActivated": true,
+          "exclusiveMinimum": false,
+          "exclusiveMaximum": false,
+          "primaryKey": false,
+          "mode": "int",
+          "required": false,
+          "childType": "numeric",
+          "type": "numeric",
+          "compositeKey": [
+            "compositePartitionKey",
+            "compositeClusteringKey",
+            "compositePrimaryKey",
+            "compositeUniqueKey"
+          ],
+          "compositePartitionKey": false,
+          "compositeClusteringKey": false,
+          "compositePrimaryKey": false,
+          "GUID": "5a59f2dd-fcdc-431f-8997-92bb0ad626b8",
+          "description": "Calificación otorgada por el usuario al negocio.",
+          "error": {}
+        },
+        {
+          "name": "date",
+          "hackoladeMeta": {},
+          "isActivated": true,
+          "primaryKey": false,
+          "required": false,
+          "childType": "date",
+          "type": "string",
+          "compositeKey": [
+            "compositePartitionKey",
+            "compositeClusteringKey",
+            "compositePrimaryKey",
+            "compositeUniqueKey"
+          ],
+          "compositePartitionKey": false,
+          "compositeClusteringKey": false,
+          "compositePrimaryKey": false,
+          "GUID": "f497f70b-bbed-48d6-8c2a-bafc05f8c1ff",
+          "description": "Fecha en la que se publicó la reseña.",
+          "error": {}
+        },
+        {
+          "name": "text",
+          "hackoladeMeta": {},
+          "isActivated": true,
+          "primaryKey": false,
+          "mode": "string",
+          "subtype": "string",
+          "required": false,
+          "childType": "text",
+          "type": "string",
+          "compositeKey": [
+            "compositePartitionKey",
+            "compositeClusteringKey",
+            "compositePrimaryKey",
+            "compositeUniqueKey"
+          ],
+          "compositePartitionKey": false,
+          "compositeClusteringKey": false,
+          "compositePrimaryKey": false,
+          "GUID": "025bce9b-40a8-4972-b632-5f81e0c17051",
+          "description": "Contenido o texto escrito por el usuario en la reseña.",
+          "error": {}
+        },
+        {
+          "name": "useful",
+          "hackoladeMeta": {},
+          "isActivated": true,
+          "exclusiveMinimum": false,
+          "exclusiveMaximum": false,
+          "primaryKey": false,
+          "mode": "int",
+          "required": false,
+          "childType": "numeric",
+          "type": "numeric",
+          "compositeKey": [
+            "compositePartitionKey",
+            "compositeClusteringKey",
+            "compositePrimaryKey",
+            "compositeUniqueKey"
+          ],
+          "compositePartitionKey": false,
+          "compositeClusteringKey": false,
+          "compositePrimaryKey": false,
+          "GUID": "46853404-28cc-48bc-9303-faa580503819",
+          "description": "Cantidad de votos recibidos por la reseña como contenido útil.",
+          "error": {}
+        }
+      ],
+      "definitions": {
+        "type": "definitions",
+        "properties": [],
+        "GUID": "ef427aa8-526c-4111-bc2f-980f082650c2"
+      },
+      "isActivated": true,
+      "additionalProperties": false,
+      "collectionUsers": [],
+      "tableIfNotExists": true,
+      "GUID": "f1c8bb61-181e-4fbf-a056-7cefef9f47e5",
+      "hackoladeMeta": {
+        "validationErrors": {}
+      }
+    },
+    {
+      "collectionName": "BUSINESS",
+      "type": "object",
+      "properties": [
+        {
+          "name": "business_id",
+          "hackoladeMeta": {},
+          "isActivated": true,
+          "primaryKey": true,
+          "mode": "string",
+          "subtype": "string",
+          "required": true,
+          "childType": "text",
+          "type": "string",
+          "compositeKey": [
+            "compositePartitionKey",
+            "compositeClusteringKey",
+            "compositePrimaryKey",
+            "compositeUniqueKey"
+          ],
+          "compositePartitionKey": false,
+          "compositeClusteringKey": false,
+          "GUID": "347bc150-f718-4edb-8849-81f662285cae",
+          "childRelationships": [
+            "2d8903a5-838a-42e7-89c8-4cd5b2692379",
+            "ad824b43-ddab-430f-b0ea-8a4710aa3946"
+          ],
+          "description": "Identificador único del negocio.",
+          "error": {}
+        },
+        {
+          "name": "name",
+          "hackoladeMeta": {},
+          "isActivated": true,
+          "primaryKey": false,
+          "mode": "string",
+          "subtype": "string",
+          "required": false,
+          "childType": "text",
+          "type": "string",
+          "compositeKey": [
+            "compositePartitionKey",
+            "compositeClusteringKey",
+            "compositePrimaryKey",
+            "compositeUniqueKey"
+          ],
+          "compositePartitionKey": false,
+          "compositeClusteringKey": false,
+          "compositePrimaryKey": false,
+          "GUID": "956fd6ae-ad60-4f11-a972-d785326ee18c",
+          "description": "Nombre del negocio registrado en la plataforma.",
+          "error": {}
+        },
+        {
+          "name": "address",
+          "hackoladeMeta": {},
+          "isActivated": true,
+          "primaryKey": false,
+          "mode": "string",
+          "subtype": "string",
+          "required": false,
+          "childType": "text",
+          "type": "string",
+          "compositeKey": [
+            "compositePartitionKey",
+            "compositeClusteringKey",
+            "compositePrimaryKey",
+            "compositeUniqueKey"
+          ],
+          "compositePartitionKey": false,
+          "compositeClusteringKey": false,
+          "compositePrimaryKey": false,
+          "GUID": "0c02b8b4-d668-4995-bf57-c5cc247a5f15",
+          "description": "Dirección registrada del negocio.",
+          "error": {}
+        },
+        {
+          "name": "stars",
+          "hackoladeMeta": {},
+          "isActivated": true,
+          "exclusiveMinimum": false,
+          "exclusiveMaximum": false,
+          "primaryKey": false,
+          "mode": "decimal",
+          "required": false,
+          "childType": "numeric",
+          "type": "numeric",
+          "compositeKey": [
+            "compositePartitionKey",
+            "compositeClusteringKey",
+            "compositePrimaryKey",
+            "compositeUniqueKey"
+          ],
+          "compositePartitionKey": false,
+          "compositeClusteringKey": false,
+          "compositePrimaryKey": false,
+          "GUID": "33d4a74f-b8b6-4793-9ffe-b14677de0dd7",
+          "description": "Calificación promedio del negocio.",
+          "error": {}
+        },
+        {
+          "name": "review_count",
+          "hackoladeMeta": {},
+          "isActivated": true,
+          "exclusiveMinimum": false,
+          "exclusiveMaximum": false,
+          "primaryKey": false,
+          "mode": "int",
+          "required": false,
+          "childType": "numeric",
+          "type": "numeric",
+          "compositeKey": [
+            "compositePartitionKey",
+            "compositeClusteringKey",
+            "compositePrimaryKey",
+            "compositeUniqueKey"
+          ],
+          "compositePartitionKey": false,
+          "compositeClusteringKey": false,
+          "compositePrimaryKey": false,
+          "GUID": "e5ea7f19-093a-4bb9-8dd8-1de17845386c",
+          "description": "Cantidad total de reseñas asociadas al negocio.",
+          "error": {}
+        },
+        {
+          "name": "is_open",
+          "hackoladeMeta": {},
+          "isActivated": true,
+          "exclusiveMinimum": false,
+          "exclusiveMaximum": false,
+          "primaryKey": false,
+          "mode": "int",
+          "required": false,
+          "childType": "numeric",
+          "type": "numeric",
+          "compositeKey": [
+            "compositePartitionKey",
+            "compositeClusteringKey",
+            "compositePrimaryKey",
+            "compositeUniqueKey"
+          ],
+          "compositePartitionKey": false,
+          "compositeClusteringKey": false,
+          "compositePrimaryKey": false,
+          "GUID": "32718c75-1cd7-4bf5-a8c3-b37b48c09cb0",
+          "description": "Indica si el negocio se encuentra abierto o cerrado en la plataforma.",
+          "error": {}
+        },
+        {
+          "name": "categories",
+          "hackoladeMeta": {},
+          "isActivated": true,
+          "primaryKey": false,
+          "mode": "string",
+          "subtype": "string",
+          "required": false,
+          "childType": "text",
+          "type": "string",
+          "compositeKey": [
+            "compositePartitionKey",
+            "compositeClusteringKey",
+            "compositePrimaryKey",
+            "compositeUniqueKey"
+          ],
+          "compositePartitionKey": false,
+          "compositeClusteringKey": false,
+          "compositePrimaryKey": false,
+          "GUID": "17658bfc-0b9f-4aab-b7df-920920bd2ecc",
+          "description": "Categorías o tipos de actividad asociados al negocio.",
+          "error": {}
+        }
+      ],
+      "definitions": {
+        "type": "definitions",
+        "properties": [],
+        "GUID": "bbeadb60-711e-4b46-8bef-dc373a0158a7"
+      },
+      "isActivated": true,
+      "additionalProperties": false,
+      "collectionUsers": [],
+      "tableIfNotExists": true,
+      "GUID": "43e94224-d4f6-49f2-b046-887b74f06cf5",
+      "hackoladeMeta": {
+        "validationErrors": {}
+      }
+    },
+    {
+      "collectionName": "TIP",
+      "type": "object",
+      "properties": [
+        {
+          "name": "user_id",
+          "hackoladeMeta": {},
+          "isActivated": true,
+          "primaryKey": false,
+          "mode": "string",
+          "subtype": "string",
+          "required": false,
+          "childType": "text",
+          "type": "string",
+          "compositeKey": [
+            "compositePartitionKey",
+            "compositeClusteringKey",
+            "compositePrimaryKey",
+            "compositeUniqueKey"
+          ],
+          "compositePartitionKey": false,
+          "compositeClusteringKey": false,
+          "GUID": "2b4458c5-2b94-49d5-8dea-562b3ea5e2b1",
+          "relationshipType": "Foreign Key",
+          "foreignCollection": "904a8f39-ac52-40a3-98b1-bda3bb815767",
+          "foreignField": [
+            "904a8f39-ac52-40a3-98b1-bda3bb815767",
+            "7247a435-dfc8-499b-b27f-f6b9929957e4"
+          ],
+          "parentRelationship": "2d591ebc-ec71-4b55-bdce-e546728e5b80",
+          "description": "Identificador del usuario que publicó el tip.",
+          "error": {}
+        },
+        {
+          "name": "business_id",
+          "hackoladeMeta": {},
+          "isActivated": true,
+          "primaryKey": false,
+          "mode": "string",
+          "subtype": "string",
+          "required": false,
+          "childType": "text",
+          "type": "string",
+          "compositeKey": [
+            "compositePartitionKey",
+            "compositeClusteringKey",
+            "compositePrimaryKey",
+            "compositeUniqueKey"
+          ],
+          "compositePartitionKey": false,
+          "compositeClusteringKey": false,
+          "GUID": "ffa0d913-6df3-4021-8051-924b236644ca",
+          "description": "Identificador del negocio al que corresponde el tip.",
+          "error": {}
+        },
+        {
+          "name": "text",
+          "hackoladeMeta": {},
+          "isActivated": true,
+          "primaryKey": false,
+          "mode": "string",
+          "subtype": "string",
+          "required": false,
+          "childType": "text",
+          "type": "string",
+          "compositeKey": [
+            "compositePartitionKey",
+            "compositeClusteringKey",
+            "compositePrimaryKey",
+            "compositeUniqueKey"
+          ],
+          "compositePartitionKey": false,
+          "compositeClusteringKey": false,
+          "GUID": "ba6cea66-5cee-461b-9caa-b19ca227ffd9",
+          "description": "Contenido del tip publicado por el usuario.",
+          "error": {}
+        },
+        {
+          "name": "date",
+          "hackoladeMeta": {},
+          "isActivated": true,
+          "primaryKey": false,
+          "required": false,
+          "childType": "date",
+          "type": "string",
+          "compositeKey": [
+            "compositePartitionKey",
+            "compositeClusteringKey",
+            "compositePrimaryKey",
+            "compositeUniqueKey"
+          ],
+          "compositePartitionKey": false,
+          "compositeClusteringKey": false,
+          "GUID": "08723385-ff84-4c11-883b-dcf78bdd707f",
+          "description": "Fecha en la que se publicó el tip.",
+          "error": {}
+        },
+        {
+          "name": "compliment_count",
+          "hackoladeMeta": {},
+          "isActivated": true,
+          "exclusiveMinimum": false,
+          "exclusiveMaximum": false,
+          "primaryKey": false,
+          "mode": "int",
+          "required": false,
+          "childType": "numeric",
+          "type": "numeric",
+          "compositeKey": [
+            "compositePartitionKey",
+            "compositeClusteringKey",
+            "compositePrimaryKey",
+            "compositeUniqueKey"
+          ],
+          "compositePartitionKey": false,
+          "compositeClusteringKey": false,
+          "GUID": "67f3faaa-9faf-4210-8811-9cffcecb65ff",
+          "description": "Cantidad de reconocimientos recibidos por el tip.",
+          "error": {}
+        }
+      ],
+      "definitions": {
+        "type": "definitions",
+        "properties": [],
+        "GUID": "e0d2c087-6b3f-4015-a2e2-5339b40952f6"
+      },
+      "isActivated": true,
+      "additionalProperties": false,
+      "collectionUsers": [],
+      "tableIfNotExists": true,
+      "GUID": "94047fc0-57d9-4e16-808b-08a72fadc815",
+      "hackoladeMeta": {
+        "validationErrors": {}
+      }
+    },
+    {
+      "collectionName": "CHECK_IN",
+      "type": "object",
+      "properties": [
+        {
+          "name": "business_id",
+          "hackoladeMeta": {},
+          "isActivated": true,
+          "primaryKey": false,
+          "mode": "string",
+          "subtype": "string",
+          "required": false,
+          "childType": "text",
+          "type": "string",
+          "compositeKey": [
+            "compositePartitionKey",
+            "compositeClusteringKey",
+            "compositePrimaryKey",
+            "compositeUniqueKey"
+          ],
+          "compositePartitionKey": false,
+          "compositeClusteringKey": false,
+          "GUID": "10a63940-f4e6-4445-bca1-e541ca4cbc31",
+          "relationshipType": "Foreign Key",
+          "foreignCollection": "43e94224-d4f6-49f2-b046-887b74f06cf5",
+          "foreignField": [
+            "43e94224-d4f6-49f2-b046-887b74f06cf5",
+            "347bc150-f718-4edb-8849-81f662285cae"
+          ],
+          "parentRelationship": "ad824b43-ddab-430f-b0ea-8a4710aa3946",
+          "description": "Identificador del negocio asociado al registro de check-in.",
+          "error": {}
+        },
+        {
+          "name": "date",
+          "hackoladeMeta": {},
+          "isActivated": true,
+          "primaryKey": false,
+          "required": false,
+          "childType": "date",
+          "type": "string",
+          "compositeKey": [
+            "compositePartitionKey",
+            "compositeClusteringKey",
+            "compositePrimaryKey",
+            "compositeUniqueKey"
+          ],
+          "compositePartitionKey": false,
+          "compositeClusteringKey": false,
+          "GUID": "7c75db1e-e0b9-4115-baf3-efdd4618735b",
+          "description": "Fecha o registro temporal asociado a la actividad de check-in del negocio.",
+          "error": {}
+        }
+      ],
+      "definitions": {
+        "type": "definitions",
+        "properties": [],
+        "GUID": "7337e10f-74b2-4a11-803f-309b2c30990b"
+      },
+      "isActivated": true,
+      "additionalProperties": false,
+      "collectionUsers": [],
+      "tableIfNotExists": true,
+      "GUID": "e6842376-304b-447b-abc0-52bb4b004059",
+      "hackoladeMeta": {
+        "validationErrors": {}
+      }
+    }
+  ],
+  "buckets": [],
+  "views": [],
+  "relationships": [
+    {
+      "name": "fk_USER_user_id_to_TIP_user_id",
+      "relationshipType": "Foreign Key",
+      "parentField": [
+        [
+          "904a8f39-ac52-40a3-98b1-bda3bb815767",
+          "7247a435-dfc8-499b-b27f-f6b9929957e4"
+        ]
+      ],
+      "parentCardinality": "1",
+      "childField": [
+        [
+          "94047fc0-57d9-4e16-808b-08a72fadc815",
+          "2b4458c5-2b94-49d5-8dea-562b3ea5e2b1"
+        ]
+      ],
+      "isActivated": true,
+      "childCardinality": "1..n",
+      "customProperties": {
+        "disableNoValidate": true
+      },
+      "parentCollection": "904a8f39-ac52-40a3-98b1-bda3bb815767",
+      "childCollection": "94047fc0-57d9-4e16-808b-08a72fadc815",
+      "GUID": "2d591ebc-ec71-4b55-bdce-e546728e5b80",
+      "hackoladeMeta": {
+        "validationErrors": {}
+      },
+      "hackoladeStyles": {
+        "GUID": "a6889c02-bef1-4b9d-84ae-8036e068f6f5",
+        "autoPositioning": true,
+        "type": "Orthogonal",
+        "thickness": 2,
+        "color": "#79c4ff",
+        "dataType": "",
+        "shape": [
+          {
+            "x": 1390,
+            "y": 430.99998474121094
+          },
+          {
+            "x": 1339,
+            "y": 430.99998474121094
+          },
+          {
+            "x": 1339,
+            "y": 393.1000061035156
+          },
+          {
+            "x": 1288,
+            "y": 393.1000061035156
+          }
+        ],
+        "sides": [
+          "left",
+          "right"
+        ]
+      }
+    },
+    {
+      "name": "fk_USER_user_id_to_REVIEW_user_id",
+      "relationshipType": "Foreign Key",
+      "parentField": [
+        [
+          "904a8f39-ac52-40a3-98b1-bda3bb815767",
+          "7247a435-dfc8-499b-b27f-f6b9929957e4"
+        ]
+      ],
+      "parentCardinality": "1",
+      "childField": [
+        [
+          "f1c8bb61-181e-4fbf-a056-7cefef9f47e5",
+          "e7a9aecc-0f25-4659-9f54-4c5adefd3485"
+        ]
+      ],
+      "isActivated": true,
+      "childCardinality": "1..n",
+      "customProperties": {
+        "disableNoValidate": true
+      },
+      "parentCollection": "904a8f39-ac52-40a3-98b1-bda3bb815767",
+      "childCollection": "f1c8bb61-181e-4fbf-a056-7cefef9f47e5",
+      "GUID": "1ce8fccd-af38-4693-84ff-aede19885d30",
+      "hackoladeMeta": {
+        "validationErrors": {}
+      },
+      "hackoladeStyles": {
+        "GUID": "71917392-4d08-4aae-ba41-0e29293ade57",
+        "autoPositioning": true,
+        "type": "Orthogonal",
+        "thickness": 2,
+        "color": "#79c4ff",
+        "dataType": "",
+        "shape": [
+          {
+            "x": 1150.6274510034068,
+            "y": 633.9372557212861
+          },
+          {
+            "x": 1150.6274510034068,
+            "y": 553.2686309124008
+          },
+          {
+            "x": 1149.5,
+            "y": 553.2686309124008
+          },
+          {
+            "x": 1149.5,
+            "y": 472.6000061035156
+          }
+        ],
+        "sides": [
+          "top",
+          "bottom"
+        ]
+      }
+    },
+    {
+      "name": "fk_BUSINESS_business_id_to_REVIEW_business_id",
+      "relationshipType": "Foreign Key",
+      "parentField": [
+        [
+          "43e94224-d4f6-49f2-b046-887b74f06cf5",
+          "347bc150-f718-4edb-8849-81f662285cae"
+        ]
+      ],
+      "parentCardinality": "1",
+      "childField": [
+        [
+          "f1c8bb61-181e-4fbf-a056-7cefef9f47e5",
+          "4c1bdbde-3152-4066-bfd7-dab1b2594a04"
+        ]
+      ],
+      "isActivated": true,
+      "childCardinality": "1..n",
+      "customProperties": {
+        "disableNoValidate": true
+      },
+      "parentCollection": "43e94224-d4f6-49f2-b046-887b74f06cf5",
+      "childCollection": "f1c8bb61-181e-4fbf-a056-7cefef9f47e5",
+      "GUID": "2d8903a5-838a-42e7-89c8-4cd5b2692379",
+      "hackoladeMeta": {
+        "validationErrors": {}
+      },
+      "hackoladeStyles": {
+        "GUID": "45e2044a-91c2-472b-951d-0fe97fcf0a71",
+        "autoPositioning": true,
+        "type": "Orthogonal",
+        "thickness": 2,
+        "color": "#79c4ff",
+        "dataType": "",
+        "shape": [
+          {
+            "x": 1289.603921605451,
+            "y": 716.0745107383207
+          },
+          {
+            "x": 1346.3254902006813,
+            "y": 716.0745107383207
+          },
+          {
+            "x": 1346.3254902006813,
+            "y": 692.005857994114
+          },
+          {
+            "x": 1403.0470587959117,
+            "y": 692.005857994114
+          }
+        ],
+        "sides": [
+          "right",
+          "left"
+        ]
+      }
+    },
+    {
+      "name": "fk_BUSINESS_business_id_to_CHECK_IN_business_id",
+      "relationshipType": "Foreign Key",
+      "parentField": [
+        [
+          "43e94224-d4f6-49f2-b046-887b74f06cf5",
+          "347bc150-f718-4edb-8849-81f662285cae"
+        ]
+      ],
+      "parentCardinality": "1",
+      "childField": [
+        [
+          "e6842376-304b-447b-abc0-52bb4b004059",
+          "10a63940-f4e6-4445-bca1-e541ca4cbc31"
+        ]
+      ],
+      "isActivated": true,
+      "childCardinality": "1..n",
+      "customProperties": {
+        "disableNoValidate": true
+      },
+      "parentCollection": "43e94224-d4f6-49f2-b046-887b74f06cf5",
+      "childCollection": "e6842376-304b-447b-abc0-52bb4b004059",
+      "GUID": "ad824b43-ddab-430f-b0ea-8a4710aa3946",
+      "hackoladeMeta": {
+        "validationErrors": {}
+      },
+      "hackoladeStyles": {
+        "GUID": "778e3ca4-cba0-4c6a-8a4a-33b6df1576d6",
+        "autoPositioning": true,
+        "type": "Orthogonal",
+        "thickness": 2,
+        "color": "#79c4ff",
+        "dataType": "",
+        "shape": [
+          {
+            "x": 1750.94122521586,
+            "y": 676.103921605451
+          },
+          {
+            "x": 1699.9941420058858,
+            "y": 676.103921605451
+          },
+          {
+            "x": 1699.9941420058858,
+            "y": 692.005857994114
+          },
+          {
+            "x": 1649.0470587959117,
+            "y": 692.005857994114
+          }
+        ],
+        "sides": [
+          "left",
+          "right"
+        ]
+      }
+    }
+  ],
+  "users": [],
+  "diagramViews": [],
+  "idToNameHashTable": {
+    "904a8f39-ac52-40a3-98b1-bda3bb815767": "USER",
+    "7247a435-dfc8-499b-b27f-f6b9929957e4": "user_id",
+    "ddf35869-457e-42de-a66c-84f5de9acc58": "name",
+    "2ef5db51-eae9-4c6a-a913-ab0e5249427b": "review_count",
+    "7bbe948a-df0f-4fae-a5ea-7bba30d6fca4": "yelping_since",
+    "fa2cd21b-70b1-45a2-8134-276f3952c80c": "useful",
+    "a265b290-6aca-495b-a3e8-7bafbbe07bd4": "average_stars",
+    "00ba18c1-054e-4b0e-a6ec-856bd7fa4ecf": "compliment_writer",
+    "f1c8bb61-181e-4fbf-a056-7cefef9f47e5": "REVIEW",
+    "5ee07eb4-3c8e-4c9d-b10e-e5780410dfad": "review_id",
+    "e7a9aecc-0f25-4659-9f54-4c5adefd3485": "user_id",
+    "4c1bdbde-3152-4066-bfd7-dab1b2594a04": "business_id",
+    "5a59f2dd-fcdc-431f-8997-92bb0ad626b8": "stars",
+    "f497f70b-bbed-48d6-8c2a-bafc05f8c1ff": "date",
+    "025bce9b-40a8-4972-b632-5f81e0c17051": "text",
+    "46853404-28cc-48bc-9303-faa580503819": "useful",
+    "43e94224-d4f6-49f2-b046-887b74f06cf5": "BUSINESS",
+    "347bc150-f718-4edb-8849-81f662285cae": "business_id",
+    "956fd6ae-ad60-4f11-a972-d785326ee18c": "name",
+    "0c02b8b4-d668-4995-bf57-c5cc247a5f15": "address",
+    "33d4a74f-b8b6-4793-9ffe-b14677de0dd7": "stars",
+    "e5ea7f19-093a-4bb9-8dd8-1de17845386c": "review_count",
+    "32718c75-1cd7-4bf5-a8c3-b37b48c09cb0": "is_open",
+    "17658bfc-0b9f-4aab-b7df-920920bd2ecc": "categories",
+    "94047fc0-57d9-4e16-808b-08a72fadc815": "TIP",
+    "2b4458c5-2b94-49d5-8dea-562b3ea5e2b1": "user_id",
+    "ffa0d913-6df3-4021-8051-924b236644ca": "business_id",
+    "ba6cea66-5cee-461b-9caa-b19ca227ffd9": "text",
+    "08723385-ff84-4c11-883b-dcf78bdd707f": "date",
+    "67f3faaa-9faf-4210-8811-9cffcecb65ff": "compliment_count",
+    "e6842376-304b-447b-abc0-52bb4b004059": "CHECK_IN",
+    "10a63940-f4e6-4445-bca1-e541ca4cbc31": "business_id",
+    "7c75db1e-e0b9-4115-baf3-efdd4618735b": "date",
+    "2d591ebc-ec71-4b55-bdce-e546728e5b80": "fk_USER_user_id_to_TIP_user_id",
+    "1ce8fccd-af38-4693-84ff-aede19885d30": "fk_USER_user_id_to_REVIEW_user_id",
+    "2d8903a5-838a-42e7-89c8-4cd5b2692379": "fk_BUSINESS_business_id_to_REVIEW_business_id",
+    "ad824b43-ddab-430f-b0ea-8a4710aa3946": "fk_BUSINESS_business_id_to_CHECK_IN_business_id"
+  },
+  "definitions": {
+    "type": "definitions",
+    "properties": [],
+    "GUID": "47368c9a-7d82-4110-a6f2-5317b3a740aa"
+  },
+  "polyglotDefinitions": {
+    "type": "polyglotDefinitions",
+    "properties": [],
+    "GUID": "0587d2a9-1a5b-4150-b512-a10bd92a6d7f"
+  },
+  "externalDefinitions": {
+    "type": "externalDefinitions",
+    "properties": [],
+    "GUID": "283d24b3-d7e6-4e06-a249-128e97eaf367"
+  },
+  "sources": [],
+  "decorativeSymbols": [],
+  "businessGlossaries": [],
+  "businessGlossaryTerms": [],
+  "dbVersion": "Runtime 17",
+  "dbVendor": "Delta Lake",
+  "appTarget": "DeltaLake",
+  "creationTS": "2026-09-13T18:39:54.343Z",
+  "GUID": "d76305cf-51a4-44d1-bbfd-3684b6202bd2",
+  "isLineageEnabled": false,
+  "hackoladeMeta": {
+    "validationErrors": {
+      "modelName": false
+    }
+  },
+  "lastModifTS": "2026-09-27T20:08:34.535Z",
+  "persistenceSchemaVersion": "8",
+  "isCreatedByPlugin": true,
+  "pluginInformation": {
+    "pluginName": "DeltaLake",
+    "pluginVersion": "0.2.55",
+    "pluginEngineVersion": "1.0.0"
+  },
+  "applicationInformation": {
+    "version": "8.12.8"
+  },
+  "settings": {
+    "centralPane": {
+      "dbLevel": {
+        "erd": [
+          {
+            "GUID": "904a8f39-ac52-40a3-98b1-bda3bb815767",
+            "x": 1011,
+            "y": 313.6000061035156,
+            "width": 277,
+            "height": 159,
+            "color": {}
+          },
+          {
+            "GUID": "f1c8bb61-181e-4fbf-a056-7cefef9f47e5",
+            "x": 1011.6509804013627,
+            "y": 633.9372557212861,
+            "width": 277.9529412040883,
+            "height": 164.27451003406927,
+            "color": {}
+          },
+          {
+            "GUID": "43e94224-d4f6-49f2-b046-887b74f06cf5",
+            "x": 1403.0470587959117,
+            "y": 612.505857994114,
+            "width": 246,
+            "height": 159,
+            "color": {}
+          },
+          {
+            "GUID": "94047fc0-57d9-4e16-808b-08a72fadc815",
+            "x": 1390,
+            "y": 369.99998474121094,
+            "width": 239,
+            "height": 122,
+            "color": {}
+          },
+          {
+            "GUID": "e6842376-304b-447b-abc0-52bb4b004059",
+            "x": 1750.94122521586,
+            "y": 634.603921605451,
+            "width": 230,
+            "height": 83,
+            "color": {}
+          }
+        ],
+        "erdDefinitions": {
+          "erd": [],
+          "rootPath": [],
+          "entities": [],
+          "decorativeSymbols": []
+        },
+        "buckets": [],
+        "collapsedNodes": [],
+        "activeRelationship": "",
+        "activeRelationshipFields": {
+          "childField": [],
+          "parentField": []
+        },
+        "selectedCollections": [],
+        "displayColorPicker": false,
+        "graphView": {
+          "erd": [],
+          "buckets": [],
+          "decorativeSymbols": [],
+          "forceLayout": true,
+          "defaultLinkLength": 300,
+          "options": []
+        },
+        "diagramViews": [],
+        "decorativeSymbols": [],
+        "nestedCollectionsLayout": "horizontal",
+        "options": [
+          {
+            "autoWidth": false,
+            "autoHeight": false,
+            "GUID": "f1c8bb61-181e-4fbf-a056-7cefef9f47e5"
+          },
+          {
+            "autoWidth": false,
+            "autoHeight": false,
+            "GUID": "e6842376-304b-447b-abc0-52bb4b004059"
+          }
+        ],
+        "relationshipUpdateDisabled": false
+      },
+      "collectionLevel": {},
+      "changed": false
+    },
+    "dtDiagram": {
+      "collapsedNodes": [],
+      "shouldDistributeCollections": false
+    }
+  }
+}
