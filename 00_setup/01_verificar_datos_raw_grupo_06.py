@@ -8,6 +8,8 @@
 # MAGIC Valida que los 5 archivos del Yelp Open Dataset (muestreados) estén en el Volume
 # MAGIC y hace una primera exploración de esquemas. **No transforma nada** — eso es trabajo
 # MAGIC del pipeline (E7).
+# MAGIC
+# MAGIC > **Trazabilidad —** las observaciones alimentan las secciones 4.2 (modelo lógico) y 6.2 (reglas de calidad).
 
 # COMMAND ----------
 
@@ -21,6 +23,9 @@ faltantes = [e for e in ESPERADOS if not any(e in a for a in archivos)]
 assert not faltantes, f"❌ Faltan archivos: {faltantes}. Suban la muestra al Volume."
 print("✔ Los 5 datasets están presentes")
 
+tam_mb = sum(f.size for f in dbutils.fs.ls(RAW) if f.name.endswith(".json.gz")) / 1024**2
+print(f"Tamaño de la muestra en crudo (.json.gz): {tam_mb:,.1f} MB · meta de la guía: < 300 MB")
+
 # COMMAND ----------
 
 # DBTITLE 1: Exploración rápida de esquemas y volúmenes
@@ -32,10 +37,6 @@ for e in ESPERADOS:
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC > ✏️ **TODO (grupo):** anotar aquí en markdown 3 observaciones sobre los datos crudos
-# MAGIC > (campos anidados, tipos sospechosos, posibles problemas de calidad). Estas
-# MAGIC > observaciones alimentan E3 (modelado) y E5 (reglas de calidad).
-# MAGIC
 # MAGIC ### Observaciones sobre los datos crudos
 # MAGIC
 # MAGIC 1. Se observan campos anidados o en lista dentro de un texto:`business.attributes` y `business.hours` llegan como objetos anidados; `categories` es una lista en un solo texto separado por comas; y en `checkin`, todas las visitas de un negocio vienen en un solo texto de fechas (`"2016-04-26 19:49:16, 2016-08-30 18:36:57, ..."`).

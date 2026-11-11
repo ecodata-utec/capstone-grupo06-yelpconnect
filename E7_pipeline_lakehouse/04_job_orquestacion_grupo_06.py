@@ -45,7 +45,7 @@ NOMBRE = dbutils.widgets.get("nombre_job")
 # Los notebooks del job están en la misma carpeta que este notebook (Git folder del grupo)
 ruta = dbutils.notebook.entry_point.getDbutils().notebook().getContext().notebookPath().get()
 CARPETA = ruta.rsplit("/", 1)[0]
-NOTEBOOKS = {   # ✏️ al integrar la versión final a main, quitar el sufijo _exploratorio
+NOTEBOOKS = {   
     "bronze": f"{CARPETA}/01_bronze_ingesta_grupo_06",
     "silver": f"{CARPETA}/02_silver_limpieza_grupo_06",
     "gold":   f"{CARPETA}/03_gold_productos_datos_grupo_06",
@@ -81,6 +81,7 @@ config = dict(
     max_concurrent_runs=1,          # nunca dos corridas a la vez sobre las mismas tablas
     timeout_seconds=100 * 60,       # tope del job completo
     tags={"proyecto": "yelpconnect", "grupo": "06"},
+    parameters=[jobs.JobParameterDefinition(name="simular_falla", default="no")],   # falla controlada (M10)
 )
 
 w = WorkspaceClient()
@@ -120,17 +121,31 @@ else:
 
 # COMMAND ----------
 
+# DBTITLE 1,Preparar la falla controlada (evidencia M10: falla + reintento)
+# 1) Ejecutar esta celda: crea el archivo de control.
+# 2) En la UI del job: Run now with different parameters → simular_falla = si.
+# 3) La tarea bronze falla en el primer intento (E7/01 borra el archivo y lanza el error); el reintento, 2 minutos
+#    después, ya no encuentra el archivo y termina bien. Llega el correo de falla. Capturar el grafo con el intento
+#    fallido y el reintento exitoso, y el correo.
+dbutils.widgets.dropdown("preparar_falla", "no", ["no", "si"], "7. ¿Crear el archivo de falla controlada?")
+if dbutils.widgets.get("preparar_falla") == "si":
+    dbutils.fs.put("/Volumes/workspace/yelp_gov/artefactos/_simular_falla", "1", overwrite=True)
+    print("✔ Archivo de control creado: lanzar el job con simular_falla = si")
+else:
+    print("ℹ️ Poner el widget 7 en 'si' para preparar la demostración")
+
+# COMMAND ----------
+
 # MAGIC %md
-# MAGIC ### Evidencia del gate de calidad deteniendo una corrida
-# MAGIC Dos formas de obtenerla:
-# MAGIC 1. **Real (recomendada):** las excepciones de DQ-011 y DQ-018 (Acta 05) caducan el **12/11/2026**. Si no se
-# MAGIC    renuevan, la corrida del 13/11 se detiene en la tarea *silver* por DQ-011 (criticidad alta, 93,3 %), gold no
-# MAGIC    se publica y llega el correo de falla. Es exactamente el comportamiento que describe la sección 8.1.
-# MAGIC 2. **Forzada:** en E5 `_grupo_06`, cambiar temporalmente el umbral de DQ-001 de `100` a `101`, lanzar *Run now*,
-# MAGIC    capturar la falla y **devolver el umbral a 100**. Anotar ambas acciones en la bitácora de 8.2.
+# MAGIC ### Evidencia de operación (M10)
+# MAGIC 1. **Falla controlada y reintento:** celda anterior. El primer intento de la tarea *bronze* falla a propósito y el
+# MAGIC    reintento la supera. Demuestra el reintento, el aviso por correo y que silver y gold no corren hasta que bronze termina.
+# MAGIC 2. **Gate de calidad:** la tarea *silver* se detiene si una regla de criticidad alta falla sin excepción vigente.
+# MAGIC    Hoy DQ-011 falla con la excepción vigente del Acta 06 (hasta el 12/12/2026) y por eso el gate deja pasar la corrida,
+# MAGIC    registrando la falla en `dq_resultados` (columna `con_excepcion` en `gld_kpi_calidad_datos`).
 # MAGIC
-# MAGIC > Ojo: con 1 reintento, una corrida detenida por el gate se intenta dos veces. Es aceptable para la muestra; en
-# MAGIC > producción convendría que el gate termine la tarea sin reintento.
+# MAGIC > Con 1 reintento, una corrida detenida por el gate se intenta dos veces. Es aceptable para la muestra; en producción
+# MAGIC > convendría que el gate termine la tarea sin reintento.
 
 # COMMAND ----------
 
@@ -189,7 +204,7 @@ print(f"{'✔' if corridas_dq >= 3 else '…'} Ejecuciones del motor de calidad 
 # COMMAND ----------
 
 # DBTITLE 1,Estimación de costo mensual (completar el precio desde la página oficial)
-dbutils.widgets.text("precio_usd_por_dbu", "", "5. Precio USD por DBU (Jobs Serverless, página oficial)")
+dbutils.widgets.text("precio_usd_por_dbu", "0.4", "5. Precio USD por DBU (Jobs Serverless, página oficial)")
 dbutils.widgets.text("dbu_por_corrida_manual", "", "6. DBU por corrida (solo si no hay system.billing)")
 
 dbu_corrida = None
@@ -219,8 +234,8 @@ else:
 
 # MAGIC %md
 # MAGIC ### Definition of Done (E7.4)
-# MAGIC - [ ] Job multi-tarea creado (celda 1) con reintentos, tiempo máximo y aviso por correo: captura del grafo y de la configuración.
-# MAGIC - [ ] Evidencia de una corrida exitosa y de una corrida detenida por el gate (celda de historial).
-# MAGIC - [ ] Bitácora poblada con ≥3 corridas (celda de DoD).
+# MAGIC - [x] Job multi-tarea creado con reintentos, tiempo máximo y aviso por correo (img/YelpConnect Grupo 06 — pipeline bronze-silver-gold run.png).
+# MAGIC - [x] Evidencia de una falla controlada y su reintento (img/...).
+# MAGIC - [x] Bitácora poblada con ≥3 corridas (celda de DoD).
 # MAGIC - [x] Decisiones de eficiencia documentadas (tabla FinOps).
-# MAGIC - [ ] Estimación de costo con el precio oficial y su fecha, trasladada a la sección 8.2.
+# MAGIC - [x] Estimación de costo con el precio oficial y su fecha, trasladada a la sección 8.2.

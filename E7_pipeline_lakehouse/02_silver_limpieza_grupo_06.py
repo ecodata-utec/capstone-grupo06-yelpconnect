@@ -4,15 +4,17 @@
 # MAGIC **Cierra con:** M6 Big Data
 # MAGIC
 # MAGIC Silver materializa el **modelo físico de E3**: mismos nombres, mismos tipos,
-# MAGIC mismas constraints. Por eso las tablas **no se recrean** aquí: se llenan con `insertInto` (overwrite), que respeta el DDL,los COMMENT, las PK/FK y las máscaras de E6. El rango de `stars` lo garantiza DQ-001 (cuarentena), sin CHECK (Anexo C).
+# MAGIC mismas constraints. Por eso las tablas **no se recrean** aquí: se llenan con `insertInto` (overwrite), que respeta el DDL,los COMMENT, las PK/FK y las máscaras de E6. El rango de `stars` lo garantiza DQ-001 (cuarentena), sin CHECK (decisión registrada en la sección 9).
 # MAGIC
-# MAGIC **Cuarentena.** Los registros que incumplen una regla de calidad cuya decisión es "aislar" (sección 6.2) no entran a silver: van a `workspace.yelp_gov.cuarentena_<entidad>` con la regla y el motivo.La cuarentena vive en `yelp_gov` y no en `yelp_silver` porque el Diccionario (E4) exige documentar el 100 % de las columnas de silver.
+# MAGIC **Cuarentena.** Los registros que incumplen una regla de calidad cuya decisión es "aislar" (sección 6.2) no entran a silver: van a `workspace.yelp_gov.cuarentena_<entidad>` con la regla y el motivo.La cuarentena vive en `yelp_gov` y no en `yelp_silver` porque el Diccionario (E4) exige documentar el 100 % de las columnas de silver. Las tablas de cuarentena tienen retención de 30 días (ADR-04) y tag de clasificación: contienen nombres y textos, por eso solo las leen el steward y los custodians (E6).
 # MAGIC
 # MAGIC | Regla | Entidad | Decisión en este notebook |
 # MAGIC |---|---|---|
-# MAGIC  DQ-004 · identificador de negocio único y no nulo | Negocio | Cuarentena (se conserva la versión más reciente) || DQ-015 · identificador de usuario único y no nulo | Usuario | Cuarentena (se conserva la versión más reciente) |
-# MAGIC  DQ-002 · reseña sin duplicar | Reseña | Cuarentena de las repeticiones (se conserva la más reciente) || DQ-001 · estrellas entre 1 y 5 | Reseña | Cuarentena |
-# MAGIC  DQ-005 · reseña con usuario y fecha | Reseña | Cuarentena |
+# MAGIC | DQ-004 · identificador de negocio único y no nulo | Negocio | Cuarentena (se conserva la versión más reciente) |
+# MAGIC | DQ-015 · identificador de usuario único y no nulo | Usuario | Cuarentena (se conserva la versión más reciente) |
+# MAGIC | DQ-002 · reseña sin duplicar | Reseña | Cuarentena de las repeticiones (se conserva la más reciente) |
+# MAGIC | DQ-001 · estrellas entre 1 y 5 | Reseña | Cuarentena |
+# MAGIC | DQ-005 · reseña con usuario y fecha (100 %, Acta 07) | Reseña | Cuarentena |
 # MAGIC | DQ-003 · reseña con negocio existente | Reseña | Cuarentena |
 # MAGIC | DQ-011 · reseña con usuario existente | Reseña | Cuarentena |
 # MAGIC | DQ-018 · tip con negocio y usuario existentes | Tip | Cuarentena |
@@ -51,6 +53,23 @@ MOTIVOS = {
 }
 motivo_expr = F.create_map(*[F.lit(x) for kv in MOTIVOS.items() for x in kv])
 
+# Gobierno de la cuarentena: guarda datos personales sin máscara, por eso lleva tags y la retención de ADR-04
+CONFIDENCIALES_CUARENTENA = {
+    "cuarentena_user":   {"user_id", "name"},
+    "cuarentena_review": {"user_id", "text"},
+    "cuarentena_tip":    {"user_id", "text"},
+}
+def gobernar_cuarentena(tabla):
+    t = f"{GOV}.{tabla}"
+    spark.sql(f"""ALTER TABLE {t} SET TBLPROPERTIES (
+      'delta.logRetentionDuration' = 'interval 30 days',
+      'delta.deletedFileRetentionDuration' = 'interval 30 days')""")
+    conf = CONFIDENCIALES_CUARENTENA.get(tabla, set())
+    spark.sql(f"ALTER TABLE {t} SET TAGS ('clasificacion' = '{'confidencial' if conf else 'interno'}', 'capa' = 'gov')")
+    for c in spark.table(t).columns:
+        clase = "confidencial" if c in conf else "interno"
+        spark.sql(f"ALTER TABLE {t} ALTER COLUMN `{c}` SET TAGS ('clasificacion' = '{clase}')")
+
 def publicar(df, tabla_silver, tabla_cuarentena, columnas):
     """Separa válidos y cuarentena. Los válidos se insertan respetando el DDL de E3;
     la cuarentena se guarda en yelp_gov con la regla incumplida y el motivo."""
@@ -63,6 +82,7 @@ def publicar(df, tabla_silver, tabla_cuarentena, columnas):
     validos.write.mode("overwrite").insertInto(f"{SLV}.{tabla_silver}")
     (cuarentena.write.mode("overwrite").option("overwriteSchema", "true")
                .saveAsTable(f"{GOV}.{tabla_cuarentena}"))
+    gobernar_cuarentena(tabla_cuarentena)
     n_ok, n_q = spark.table(f"{SLV}.{tabla_silver}").count(), spark.table(f"{GOV}.{tabla_cuarentena}").count()
     print(f"✔ {tabla_silver}: {n_ok:,} filas · cuarentena: {n_q:,}")
 
@@ -273,5 +293,6 @@ print("✔ Gate de calidad superado")
 # MAGIC - [x] Deduplicación de reseñas con criterio documentado + cuarentena operativa en `yelp_gov`.
 # MAGIC - [x] Check-ins explotados a grano evento.
 # MAGIC - [x] Gate de calidad integrado (ejecuta E5 y se detiene si falla una regla de criticidad alta sin excepción vigente).
-# MAGIC - [ ] Capturar el resultado del diagnóstico de la muestra y del gate como evidencia.
+# MAGIC - [x] Capturar el resultado del diagnóstico de la muestra y del gate como evidencia.
+# MAGIC - [x] Cuarentena con retención de 30 días y tags de clasificación (datos personales protegidos por acceso).
 # MAGIC

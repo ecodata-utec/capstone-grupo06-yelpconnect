@@ -14,8 +14,9 @@
 # MAGIC **Mínimo 12 reglas** cubriendo las 6 dimensiones de calidad y los dolores del caso
 # MAGIC (duplicidad de reseñas, check-ins inconsistentes, integridad referencial).
 # MAGIC
-# MAGIC > **Trazabilidad —** este entregable **implementa** la sección «Reglas de calidad de datos (definición en lenguaje de negocio)» del
-# MAGIC > **Documento Formal de Arquitectura de Datos**. Aquí se implementan y ejecutan esas reglas: el documento define QUÉ debe cumplirse y por qué; la plataforma demuestra que se cumple.
+# MAGIC > **Trazabilidad —** implementa la sección 6 (6.1 dimensiones, 6.2 catálogo, 6.3 umbrales, 6.4 señales) y el registro de
+# MAGIC > excepciones de la sección 5.5 del Documento Formal. El parámetro Restringido de DQ-016 no está en este código: vive en
+# MAGIC > `yelp_gov.dq_parametros_restringidos`, con acceso solo de Trust & Safety y custodians (sección 5.3, Actas 02 y 04).
 
 # COMMAND ----------
 
@@ -72,6 +73,19 @@ print("✔ Vistas de evaluación creadas en yelp_gov")
 # DBTITLE 1,Catálogo de reglas — las 19 de la sección 6.2
 from pyspark.sql import Row
 
+# Parámetro Restringido de DQ-016: la tabla se crea aquí, pero el valor lo registra el steward desde el SQL editor
+# (nunca en el repositorio). Sin el valor, el motor se detiene: una regla sin parámetro no puede evaluarse.
+PARAM = f"{GOV}.dq_parametros_restringidos"
+spark.sql(f"""CREATE TABLE IF NOT EXISTS {PARAM} (
+  regla_id STRING COMMENT 'Regla DQ-nnn a la que pertenece el parámetro',
+  parametro STRING COMMENT 'Nombre del parámetro',
+  valor INT COMMENT 'Valor vigente (Restringido)',
+  aprobado_por STRING COMMENT 'Data Owner que aprobó el valor',
+  fecha DATE COMMENT 'Fecha de aprobación')
+COMMENT 'Parámetros Restringidos de las señales antifraude (sección 5.3, Actas 02 y 04). Solo steward y custodians'""")
+assert spark.sql(f"SELECT count(*) c FROM {PARAM} WHERE regla_id = 'DQ-016'").first().c == 1, \
+    "❌ Falta el parámetro de DQ-016: el steward debe registrarlo una vez desde el SQL editor (guía, sección 0)"
+
 def regla(id, tabla, col, dim, desc, expr, crit, umbral):
     return Row(regla_id=id, tabla_objetivo=tabla, columna=col, dimension=dim, descripcion=desc,
                expresion_sql=expr, criticidad=crit, umbral_pct=float(umbral))
@@ -96,7 +110,7 @@ reglas = [
         "t.business_id IS NOT NULL", "alta", 100),
   regla("DQ-005", E("review"), "user_id, date", "completitud",
         "Toda reseña debe tener usuario y fecha de publicación",
-        "t.user_id IS NOT NULL AND t.`date` IS NOT NULL", "alta", 99.5),
+        "t.user_id IS NOT NULL AND t.`date` IS NOT NULL", "alta", 100), # v0.8: 99,5 → 100 (Acta 07: la supresión borra la reseña)
   regla("DQ-006", f"{GOV}.vw_dq_rating_negocio", "rating_publicado", "consistencia",
         "El rating publicado del negocio no debe diferir en más de media estrella del promedio de sus reseñas cargadas, redondeado a medias estrellas",
         "t.resenas_validas = 0 OR abs(t.rating_publicado - t.rating_calculado) <= 0.5", "media", 95),   # v0.5: 99 → 95 (6.3)
@@ -134,7 +148,7 @@ reglas = [
         "t.user_id IS NOT NULL", "alta", 100),
   regla("DQ-016", f"{GOV}.vw_dq_rafagas_usuario", "max_resenas_dia", "consistencia",
         "Un mismo usuario no debería publicar más reseñas en un día que el máximo definido por Trust & Safety",
-        "t.max_resenas_dia <= 10", "media", 99.5),
+      f"t.max_resenas_dia <= (SELECT valor FROM {PARAM} WHERE regla_id = 'DQ-016')", "media", 99.5),
   regla("DQ-017", f"{GOV}.vw_dq_resenas_usuario", "resenas_cargadas", "consistencia",
         "Las reseñas cargadas de un usuario no pueden superar el total declarado en su perfil",
         "t.resenas_cargadas <= coalesce(t.review_count, 0)", "media", 99),
@@ -151,12 +165,21 @@ reglas = [
 assert len({r.regla_id for r in reglas}) == 19
 assert {r.dimension for r in reglas} == {"completitud", "unicidad", "validez", "consistencia", "actualidad", "integridad"}
 
-(spark.createDataFrame(reglas)
-      .select("regla_id", "tabla_objetivo", "columna", "dimension", "descripcion",
-              "expresion_sql", "criticidad", "umbral_pct")
-      .write.mode("overwrite").option("overwriteSchema", "true")
-      .saveAsTable("workspace.yelp_gov.dq_reglas"))
-display(spark.table("workspace.yelp_gov.dq_reglas"))
+COLS_REGLAS = ["regla_id", "tabla_objetivo", "columna", "dimension", "descripcion", "expresion_sql", "criticidad", "umbral_pct"]
+nuevo = spark.createDataFrame(reglas).select(*COLS_REGLAS)
+TABLA_REGLAS = "workspace.yelp_gov.dq_reglas"
+if spark.catalog.tableExists(TABLA_REGLAS):
+    actual = spark.table(TABLA_REGLAS).select(*COLS_REGLAS)
+    cambio = actual.exceptAll(nuevo).count() + nuevo.exceptAll(actual).count() > 0
+else:
+    cambio = True
+if cambio:   # solo se escribe si alguna regla cambió: así version_reglas identifica de verdad una versión del catálogo
+    nuevo.write.mode("overwrite").option("overwriteSchema", "true").saveAsTable(TABLA_REGLAS)
+    print("✔ Catálogo de reglas actualizado: nueva versión")
+else:
+    print("ℹ️ Catálogo sin cambios: se conserva la versión vigente")
+print(f"version_reglas vigente = {spark.sql(f'DESCRIBE HISTORY {TABLA_REGLAS} LIMIT 1').first()['version']}")
+display(spark.table(TABLA_REGLAS))
 
 # Vista para los lectores que no son Trust & Safety (sección 5.3): el catálogo completo, salvo el
 # parámetro Restringido de DQ-016 (Acta 02 y 04). E6 da acceso a esta vista y no a dq_reglas.
@@ -185,8 +208,8 @@ def evaluar_reglas():
             ok = spark.sql(f"SELECT count(DISTINCT {r.columna}) c FROM {r.tabla_objetivo} t").first().c
         else:
             ok = spark.sql(f"SELECT count(*) c FROM {r.tabla_objetivo} t WHERE {r.expresion_sql}").first().c
-        pct = round(100.0 * ok / total, 2) if total else 100.0
-        resultados.append((r.regla_id, r.tabla_objetivo, total, ok, pct, pct >= r.umbral_pct))
+        pct_exacto = 100.0 * ok / total if total else 100.0   # se compara sin redondear (6.3)
+        resultados.append((r.regla_id, r.tabla_objetivo, total, ok, round(pct_exacto, 4), pct_exacto >= r.umbral_pct))
     df = spark.createDataFrame(resultados,
         "regla_id STRING, tabla_objetivo STRING, filas_totales BIGINT, filas_ok BIGINT, pct_cumplimiento DOUBLE, paso BOOLEAN"
     ).withColumn("ejecucion_ts", F.current_timestamp())
@@ -248,7 +271,7 @@ spark.sql("""
                 'Los tips huérfanos permanecen en cuarentena y no llegan a gold; la regla sigue evaluándose y registrándose como falla.' AS tratamiento,
                 'Andrew Collins (Data Owner, Producto) a propuesta de Rafael Nakamura (Steward)' AS aprobado_por,
                 DATE'2026-10-13' AS fecha_aprobacion,
-                DATE'2026-12-12' AS fecha_caducidad,
+                DATE'2026-11-12' AS fecha_caducidad,
                 'Acta 05' AS acta) s
   ON t.regla_id = s.regla_id AND t.acta = s.acta
   WHEN MATCHED THEN UPDATE SET *   -- si el acta ya está registrada, se alinea con las fechas del código
@@ -304,15 +327,6 @@ dbutils.notebook.exit("ok: 19 reglas evaluadas")
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### Definition of Done (E5)
-# MAGIC - [ ] ≥12 reglas en las 6 dimensiones, con criticidad y umbral justificados.
-# MAGIC - [ ] Motor ejecutado con historial en `dq_resultados` (≥2 corridas en fechas distintas).
-# MAGIC - [ ] Para cada regla FALLIDA: decisión documentada (cuarentena, corrección en pipeline, o aceptación del riesgo con firma del "Data Owner").
-# MAGIC - [ ] Bonus: agregar constraint `CHECK` o expectativa en el pipeline E7 para la regla más crítica (calidad *preventiva* vs *detectiva*).
-
-# COMMAND ----------
-
-# MAGIC %md
 # MAGIC ### Decisión ante cada regla fallida (última corrida)
 # MAGIC | Regla | Criticidad | Umbral | % obtenido | Decisión | Firma |
 # MAGIC |---|---|---|---|---|---|
@@ -322,10 +336,11 @@ dbutils.notebook.exit("ok: 19 reglas evaluadas")
 # MAGIC Las otras 17 reglas cumplen su umbral en la última corrida (scorecard: 4 de 4 en validez, consistencia y unicidad; 2 de 2 en completitud; 1 de 1 en actualidad; 2 de 4 en integridad).
 # MAGIC
 # MAGIC **Solución de fondo para ambas:** muestrear usuarios junto con toda su actividad (recomendación del resumen ejecutivo). Mientras tanto, la regla sigue evaluándose y figurando como fallida en `dq_resultados`: la excepción no oculta la falla.
+# MAGIC
 # MAGIC ### Definition of Done (E5)
-# MAGIC - [x] 19 reglas en las 6 dimensiones, con criticidad y umbral justificados (sección 6.3, v0.5).
-# MAGIC - [ ] Motor ejecutado con historial en `dq_resultados` (≥2 corridas en fechas distintas; CE-04 pide ≥3).
-# MAGIC - [ ] Para cada regla FALLIDA: decisión documentada en la tabla de arriba.
-# MAGIC - [x] Parámetro Restringido de DQ-016 fuera del alcance de los demás lectores: `vw_dq_reglas_publica` (5.3).
-# MAGIC - [ ] Bonus (no adoptado): el Anexo C deja constancia de que el DDL de E3 no declara `CHECK` sobre `stars`;
-# MAGIC   el rango se garantiza con DQ-001 + cuarentena. Si el grupo decide agregarlo, ver la celda comentada de E3.
+# MAGIC  - [x] 19 reglas en las 6 dimensiones, con criticidad y umbral justificados (sección 6.3).
+# MAGIC  - [x] Motor ejecutado con historial en `dq_resultados` (8+ corridas en fechas distintas; CE-04 pide ≥3).
+# MAGIC  - [x] Cada regla fallida con decisión documentada (tabla de arriba) y excepción registrada en `dq_excepciones`.
+# MAGIC  - [x] Parámetro Restringido de DQ-016 fuera del código: `dq_parametros_restringidos`, solo Trust & Safety y custodians (5.3).
+# MAGIC  - [x] `version_reglas` estable: el catálogo solo se reescribe si cambia una regla (CE-06).
+# MAGIC  - [x] Calidad preventiva: CHECK constraints en gold (E3), además de estas reglas detectivas. Sobre `stars` se mantiene DQ-001 + cuarentena (sección 9).

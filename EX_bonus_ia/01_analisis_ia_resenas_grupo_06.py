@@ -23,6 +23,9 @@
 # MAGIC
 # MAGIC ⚠️ **Quién lo ejecuta:** un Data Custodian o el steward. Para cualquier otra cuenta el texto llega enmascarado
 # MAGIC (`mascara_texto`) y el modelo analizaría el texto "[texto oculto…]".
+# MAGIC
+# MAGIC > **Trazabilidad —** implementa la sección 6.5 del Documento Formal (evaluación de una señal candidata con IA, bonus EX)
+# MAGIC > y aplica las secciones 5.3 (clasificación Restringido) y 5.4 (supresión) a la salida del modelo.
 
 # COMMAND ----------
 
@@ -67,6 +70,25 @@ else:
     print("ℹ️ Se reutiliza la tabla existente (no se consume cuota). Poner el widget en 'si' para regenerarla.")
 display(spark.table(TABLA).limit(10))
 
+# Gobierno de la salida del modelo: documentación por columna, retención (ADR-04) y supresión (5.4)
+COMENTARIOS_EX = {
+    "review_id":     "Reseña analizada (muestra estratificada de 500).",
+    "business_id":   "Negocio de la reseña.",
+    "stars":         "Calificación de 1 a 5 de la reseña.",
+    "es_sospechosa": "Marca de gold al momento del análisis (Restringido).",
+    "sentimiento":   "Sentimiento del texto según ai_analyze_sentiment: positive, negative, neutral o mixed.",
+    "tema":          "Tema principal según ai_classify: comida, servicio, precio, ambiente u otro.",
+    "generado_ts":   "Momento en que se llamó al modelo (la salida no es reproducible si cambia el modelo).",
+    "modelo":        "Funciones de IA usadas para generar la fila.",
+}
+for c, txt in COMENTARIOS_EX.items():
+    spark.sql(f"ALTER TABLE {TABLA} ALTER COLUMN {c} COMMENT '{txt}'")
+spark.sql(f"""ALTER TABLE {TABLA} SET TBLPROPERTIES (
+  'delta.logRetentionDuration' = 'interval 30 days', 'delta.deletedFileRetentionDuration' = 'interval 30 days')""")
+borradas = spark.sql(f"""DELETE FROM {TABLA}
+                         WHERE review_id NOT IN (SELECT review_id FROM workspace.yelp_silver.slv_review)""").first()["num_affected_rows"]
+print(f"✔ Columnas documentadas · reseñas suprimidas o ya inexistentes eliminadas: {borradas}")
+
 # COMMAND ----------
 
 # DBTITLE 1,Detección de inconsistencia calificación ↔ sentimiento (señal candidata para Trust & Safety)
@@ -92,7 +114,7 @@ display(spark.table(TABLA).limit(10))
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### Conclusiones para Trust & Safety (completar con los resultados de la corrida)
+# MAGIC ### Conclusiones para Trust & Safety
 # MAGIC - **Contradicción calificación ↔ texto: 0 de 250 sospechosas (0,0 %) y 0 de 250 verificadas (0,0 %).** No hay diferencia entre los grupos, así que la contradicción **se descarta como sexta señal** de la sección 6.4 para esta muestra.
 # MAGIC - **El modelo es coherente con las estrellas:** las reseñas con sentimiento positivo promedian entre 4,6 y 4,8 estrellas, las negativas entre 1,2 y 1,7, y las mixtas entre 2,7 y 3,6. Eso valida el uso de `ai_analyze_sentiment` sobre este texto, pero no aporta información nueva sobre el fraude.
 # MAGIC - **Interpretación:** las reseñas sospechosas de la muestra lo son por **comportamiento**: ráfagas (DQ-016) y textos copiados (DQ-010). Una reseña falsa bien construida es coherente, con texto positivo y calificación alta, por eso esta prueba no la distingue.
@@ -100,7 +122,7 @@ display(spark.table(TABLA).limit(10))
 # MAGIC - **Hallazgo técnico:** Databricks Free Edition sí permite usar AI Functions; la muestra de 500 reseñas tardó unos 2,5 minutos.
 # MAGIC - **Próximo paso posible (no implementado):** usar el modelo para detectar textos genéricos o con lenguaje publicitario, más típicos de reseñas pagadas.
 # MAGIC
-# MAGIC ### Reflexión de gobierno de IA (borrador para revisar en grupo)
+# MAGIC ### Reflexión de gobierno de IA
 # MAGIC Persistir la salida de un modelo de lenguaje como dato productivo introduce riesgos que las reglas de calidad de la
 # MAGIC sección 6 no cubren. **Primero, no es reproducible:** el mismo texto puede recibir otro sentimiento si cambia el modelo
 # MAGIC detrás de la función, así que cada fila guarda `modelo` y `generado_ts`, y una marca derivada debería guardar también
@@ -116,5 +138,6 @@ display(spark.table(TABLA).limit(10))
 # MAGIC
 # MAGIC ### Definition of Done (EX)
 # MAGIC - [x] Tabla enriquecida creada, catalogada y con COMMENT (en `yelp_gov`, por la decisión de gobierno de arriba).
-# MAGIC - [ ] Análisis de inconsistencia calificación ↔ sentimiento con conclusiones para T&S (completar arriba).
+# MAGIC - [x] Análisis de inconsistencia calificación ↔ sentimiento con conclusiones para T&S (completar arriba).
 # MAGIC - [x] Reflexión de gobierno de IA (borrador; revisar y ajustar en grupo).
+# MAGIC - [x] Columnas con COMMENT, tag Restringido (E6), retención de 30 días y supresión aplicada.
