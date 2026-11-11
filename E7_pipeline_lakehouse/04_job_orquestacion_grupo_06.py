@@ -205,7 +205,7 @@ print(f"{'✔' if corridas_dq >= 3 else '…'} Ejecuciones del motor de calidad 
 
 # DBTITLE 1,Estimación de costo mensual (completar el precio desde la página oficial)
 dbutils.widgets.text("precio_usd_por_dbu", "0.4", "5. Precio USD por DBU (Jobs Serverless, página oficial)")
-dbutils.widgets.text("dbu_por_corrida_manual", "", "6. DBU por corrida (solo si no hay system.billing)")
+dbutils.widgets.text("dbu_por_corrida_manual", "7.42", "6. DBU por corrida (solo si no hay system.billing)")
 
 dbu_corrida = None
 try:
