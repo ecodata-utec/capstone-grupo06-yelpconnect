@@ -114,7 +114,6 @@ for tabla, col in RESTRINGIDAS:
 # COMMAND ----------
 
 # DBTITLE 1,Control 1c — Tablas de gobierno con datos sensibles (yelp_gov)
-# DBTITLE 1,Control 1c — Tablas de gobierno con datos sensibles (yelp_gov)
 SENSIBLES_GOV = {
     "solicitudes_supresion":      "confidencial",   # contiene user_id de titulares (5.4)
     "dq_parametros_restringidos": "restringido",    # parámetro de DQ-016 (5.3, Actas 02 y 04)

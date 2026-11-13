@@ -65,7 +65,6 @@
 # DBTITLE 1,Q2b · REQ-01 — Variación mensual del % de reseñas sospechosas por negocio (Rafael Nakamura, T&S)
 # MAGIC %sql
 # MAGIC -- DBTITLE 1,Q2b · REQ-01 — Variación mensual del % de reseñas sospechosas por negocio (Rafael Nakamura, T&S)
-# MAGIC %sql
 # MAGIC -- Último mes completo de la muestra (enero 2022 está incompleto) frente al mes anterior, en puntos porcentuales.
 # MAGIC WITH ult AS (SELECT add_months(max(mes), -1) AS mes_ref FROM workspace.yelp_gold.gld_kpi_resenas_sospechosas_negocio)
 # MAGIC SELECT n.name AS negocio, k.mes, k.n_resenas, k.n_sospechosas,
