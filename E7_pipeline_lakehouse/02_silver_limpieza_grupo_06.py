@@ -1,4 +1,8 @@
 # Databricks notebook source
+# /// script
+# [tool.databricks.environment]
+# environment_version = "6"
+# ///
 # MAGIC %md
 # MAGIC # E7.2 · Bronze → Silver: limpieza y conformación
 # MAGIC **Cierra con:** M6 Big Data

@@ -110,7 +110,6 @@ display(spark.sql("""SELECT _archivo_origen, count(*) AS filas
 # COMMAND ----------
 
 # DBTITLE 1,Supresión de datos personales (RGPD art. 17 · Ley 29733 · sección 5.4)
-# DBTITLE 1,Supresión de datos personales (RGPD art. 17 · Ley 29733 · sección 5.4)
 # La lista de supresión se aplica en cada corrida: bronze se recarga desde el Volume, y silver, la cuarentena y gold
 # se reconstruyen desde bronze, así que el borrado se propaga solo a todas las capas. Se borran la cuenta, sus reseñas
 # y sus tips (Acta 07). VACUUM semanal (E7/03) elimina las versiones anteriores dentro de los 30 días de ADR-04.

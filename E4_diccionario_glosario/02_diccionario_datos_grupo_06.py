@@ -151,7 +151,6 @@ assert huerfanas.count() == 0, "❌ El diccionario cita reglas DQ-nnn que no exi
 
 # COMMAND ----------
 
-# DBTITLE 1,Validador 3 — Obligatoriedad del diccionario
 # DBTITLE 1,Validador 3 — Obligatoriedad del diccionario coherente con el DDL (tablas, no vistas)
 # La metadata técnica se hereda del DDL: si el diccionario dice «Obligatorio», la columna debe ser NOT NULL, y viceversa.
 # Para una columna exigida por una regla y no por el motor, escribir en el Excel «Opcional (se exige con DQ-nnn)».
